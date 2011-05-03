@@ -35,6 +35,13 @@
 // Global Variables
 //---------------------------------------------------------------------------
 
+std::string working_dir;
+
+
+//---------------------------------------------------------------------------
+// Class Definitions
+//---------------------------------------------------------------------------
+
 class OpenLoopController {
 
 private:
@@ -49,7 +56,6 @@ private:
   int exit_flag;
   int i;
   int stop_flag;
-  char filename[128];
   Control *robot_2;
   ros::NodeHandle n_;
   ros::Timer timer;
@@ -68,8 +74,22 @@ public:
   
     ROS_INFO("Reading Controls\n");
 
+    std::cout << working_dir << "\n";
+
+    std::size_t found = working_dir.find("bin");
+
+    working_dir = working_dir.substr(0, found);
+
+    std::cout << working_dir << "\n";
+
+    std::string file_dir = "data/";
+
     // Read necessary robot instructions:
-    sprintf(filename, "%s", "/home/jake/ros/puppeteer_control/data/TrajectoryData.txt");
+    //sprintf(filename, "%s", "./TrajectoryData.txt");
+    std::string filename = working_dir + file_dir + "TrajectoryData.txt";
+
+    std::cout << filename << "\n";
+
     robot_2 = ReadControls(filename, 2);
     timer = n_.createTimer(ros::Duration(robot_2->DT), &OpenLoopController::timerCallback, this);
 
@@ -89,13 +109,13 @@ public:
       srv.request.robot_index = 0;
       srv.request.type = 'h';
 
-      srv.request.Vleft = 1.0;
-      srv.request.Vright = 1.0;
-      srv.request.Vtop = 1.0;
+      //srv.request.Vleft = 1.0;
+      //srv.request.Vright = 1.0;
+      //srv.request.Vtop = 1.0;
 
-      //srv.request.Vleft = robot_2->Vcontrols[i][0];
-      //srv.request.Vright = robot_2->Vcontrols[i][1];
-      //srv.request.Vtop = robot_2->Vcontrols[i][2];
+      srv.request.Vleft = robot_2->Vcontrols[i][0];
+      srv.request.Vright = robot_2->Vcontrols[i][1];
+      srv.request.Vtop = robot_2->Vcontrols[i][2];
 
       // NEED TO CHECK THIS
       srv.request.div = 1;
@@ -121,7 +141,7 @@ public:
   }
 
 
-  Control *ReadControls(char *filename, unsigned int MY)
+  Control *ReadControls(std::string filename, unsigned int MY)
   {
     FILE *fp;
     Control *robot;
@@ -129,7 +149,7 @@ public:
     float current_val, timestep;
     
     // Open file:
-    if((fp = fopen(filename,"r")) == NULL)
+    if((fp = fopen(filename.c_str(),"r")) == NULL)
       {
 	printf("Error Opening File!\n");
 	exit(1);
@@ -139,13 +159,16 @@ public:
     rewind(fp);
 
     // Now, we need to read the first line
-    fscanf(fp,"%s%s%f",line,line,&timestep);
+    if(fscanf(fp,"%s%s%f",line,line,&timestep) == EOF) ROS_ERROR("fscanf failure");
  
     // Now, we get the number of elements:
-    fscanf(fp,"%s%s%s%f",line,line,line,&current_val);
-    fgets(line,sizeof(line),fp);
-    fgets(line,sizeof(line),fp);
-    fgetc(fp);
+    if(fscanf(fp,"%s%s%s%f",line,line,line,&current_val) == EOF) ROS_ERROR("fscanf failure");
+
+    if(*fgets(line,sizeof(line),fp) == EOF) ROS_ERROR("fscanf failure");
+
+    if(*fgets(line,sizeof(line),fp) == EOF) ROS_ERROR("fscanf failure");
+
+    if(fgetc(fp) == EOF) ROS_ERROR("fscanf failure");
 
     size_t alloc;
     alloc = sizeof(*robot) + sizeof(robot->Vcontrols[0])*(1495);
@@ -160,38 +183,37 @@ public:
 
     // Iterate through the list of data and fill in the float arrays:
     int count = 0;
-    int i;
 
     // LEFT FIRST:
     while(count < robot->num)
       {
-	fscanf(fp,"%f%s",&current_val,line);
+	if(fscanf(fp,"%f%s",&current_val,line) == EOF) ROS_ERROR("fscanf failure");
 	robot->Vcontrols[count][0] = current_val;
 	count++;
       }
     fgetc(fp);
-    fgets(line,sizeof(line),fp);
-    fgets(line,sizeof(line),fp);
-    fgetc(fp);
+    if(*fgets(line,sizeof(line),fp) == EOF) ROS_ERROR("fscanf failure");
+    if(*fgets(line,sizeof(line),fp) == EOF) ROS_ERROR("fscanf failure");
+    if(fgetc(fp) == EOF) ROS_ERROR("fscanf failure");
 
     // THEN RIGHT:
     count = 0;
     while(count < robot->num)
       {
-	fscanf(fp,"%f%s",&current_val,line);
+	if(fscanf(fp,"%f%s",&current_val,line) == EOF) ROS_ERROR("fscanf failure");
 	robot->Vcontrols[count][1] = current_val;
 	count++;
       }
-    fgetc(fp);
-    fgets(line,sizeof(line),fp);
-    fgets(line,sizeof(line),fp);
-    fgetc(fp);
+    if(fgetc(fp) == EOF) ROS_ERROR("fscanf failure");
+    if(*fgets(line,sizeof(line),fp) == EOF) ROS_ERROR("fscanf failure");
+    if(*fgets(line,sizeof(line),fp) == EOF) ROS_ERROR("fscanf failure");
+    if(fgetc(fp) == EOF) ROS_ERROR("fscanf failure");
     
     // THEN TOP:
     count = 0;
     while(count < robot->num)
       {
-	fscanf(fp,"%f%s",&current_val,line);
+	if(fscanf(fp,"%f%s",&current_val,line) == EOF) ROS_ERROR("fscanf failure");
 	robot->Vcontrols[count][2] = current_val;
 	count++;
       }
@@ -207,6 +229,8 @@ public:
 
 int main(int argc, char** argv)
 {
+  working_dir = argv[0];
+
   // startup node
   ros::init(argc, argv, "puppeteer_control");
   ros::NodeHandle n;
