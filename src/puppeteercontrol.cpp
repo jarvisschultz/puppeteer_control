@@ -53,9 +53,9 @@ private:
     float Vcontrols[][3];
   } Control;
 
-  int exit_flag;
   int i;
-  int stop_flag;
+  bool exit_flag;
+  bool stop_flag;
   bool start_flag;
   Control *robot_2;
   ros::NodeHandle n_;
@@ -67,8 +67,8 @@ private:
 public:
   OpenLoopController() {
     i = 0;
-    stop_flag = 0;
-    exit_flag = 0;
+    stop_flag = false;
+    exit_flag = false;
     start_flag = true;
     
     // note: the string at the end of this command matters
@@ -111,7 +111,7 @@ public:
     }
     // check to see if we are done with the list of commands
     // if we aren't done, load next command to service request 
-    else if(i < robot_2->num && exit_flag == 0 && start_flag == false) {
+    else if(i < robot_2->num && exit_flag == false && start_flag == false) {
       ROS_DEBUG("%5.2f\n",100.0*i/robot_2->num);      
 
       srv.request.robot_index = robot_2->RobotMY;
@@ -137,14 +137,23 @@ public:
       srv.request.Vtop = 0.0;
       srv.request.div = 3;
       
-      if(stop_flag == 0) ROS_INFO("Stopping Robots!\n");
-      stop_flag = 1;
+      if(stop_flag == false) ROS_INFO("Stopping Robots!\n");
+      stop_flag = true;
     }
     
     // send request to service
     if(client.call(srv)) {
-      if(srv.response.confirm_sent == 1) ROS_DEBUG("Send Successful: speed_command\n");
-      else if(srv.response.confirm_sent == 0) ROS_DEBUG("Send Request Denied: speed_command\n");
+      if(srv.response.confirm_sent == 1) {
+	ROS_DEBUG("Send Successful: speed_command\n");
+      }
+      else if(srv.response.confirm_sent == 0) {
+	ROS_DEBUG("Send Request Denied: speed_command\n");
+	static bool request_denied_notify = true;
+	if(request_denied_notify) {
+	  ROS_INFO("Send Requests Denied: speed_command\n");
+	  request_denied_notify = false;
+	}
+      }
     }
     else {
       ROS_ERROR("Failed to call service: speed_command\n");
