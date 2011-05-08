@@ -56,6 +56,7 @@ private:
   int exit_flag;
   int i;
   int stop_flag;
+  bool start_flag;
   Control *robot_2;
   ros::NodeHandle n_;
   ros::Timer timer;
@@ -68,29 +69,28 @@ public:
     i = 0;
     stop_flag = 0;
     exit_flag = 0;
+    start_flag = true;
     
     // note: the string at the end of this command matters
     client = n_.serviceClient<command_msgs::speed_command>("send_serial_data");
   
     ROS_INFO("Reading Controls\n");
 
-    std::cout << working_dir << "\n";
-
-    std::size_t found = working_dir.find("bin");
-
-    working_dir = working_dir.substr(0, found);
-
-    std::cout << working_dir << "\n";
-
-    std::string file_dir = "data/";
+    std::size_t found = working_dir.find("bin");  // find the string bin in the path
+    working_dir = working_dir.substr(0, found);  // get substring from the beginning of path to location of string "bin"
+    std::string file_dir = "data/";  // set name of directory where data is kept
 
     // Read necessary robot instructions:
     //sprintf(filename, "%s", "./TrajectoryData.txt");
-    std::string filename = working_dir + file_dir + "TrajectoryData.txt";
+    std::string filename = working_dir + file_dir + "TrajectoryData.txt";  // concatonate all of these strings together to get the new path
 
-    std::cout << filename << "\n";
+    // set parameter on service to indicate serial data transfer is beginning
+    ros::param::set("serial_data_transfer", true);
 
-    robot_2 = ReadControls(filename, 2);
+    // read file into robot struct
+    robot_2 = ReadControls(filename, 3);
+
+    // create callback timer that will run with a period of DT from robot struct
     timer = n_.createTimer(ros::Duration(robot_2->DT), &OpenLoopController::timerCallback, this);
 
     ROS_INFO("Beginning movement execution\n");
@@ -98,46 +98,60 @@ public:
 
   
   void timerCallback(const ros::TimerEvent& e) {
-    ROS_DEBUG("timerCallback triggered\n");
+    //ROS_DEBUG("timerCallback triggered\n");
 
+    // send the start string if we are just starting
+    if(start_flag == true) {
+      srv.request.robot_index = robot_2->RobotMY;
+      srv.request.type = 'm';
+      srv.request.Vleft = 0.0;
+      srv.request.Vright = 0.0;
+      srv.request.Vtop = 0.0;
+      srv.request.div = 0;
+    }
     // check to see if we are done with the list of commands
-    // if we aren't done, send another command 
-    if(i < robot_2->num && exit_flag == 0) {
+    // if we aren't done, load next command to service request 
+    else if(i < robot_2->num && exit_flag == 0 && start_flag == false) {
       ROS_DEBUG("%5.2f\n",100.0*i/robot_2->num);      
 
-      // MANUALLY SETTING THESE FOR NOW
-      srv.request.robot_index = 0;
-      srv.request.type = 'h';
+      srv.request.robot_index = robot_2->RobotMY;
+      srv.request.type = 'h';  // NEED TO CHECK THIS
+      srv.request.Vleft = robot_2->Vcontrols[i][0];
+      srv.request.Vright = robot_2->Vcontrols[i][1];
+      srv.request.Vtop = robot_2->Vcontrols[i][2];
+      srv.request.div = 3;  // NEED TO CHECK THIS
 
       //srv.request.Vleft = 1.0;
       //srv.request.Vright = 1.0;
       //srv.request.Vtop = 1.0;
 
-      srv.request.Vleft = robot_2->Vcontrols[i][0];
-      srv.request.Vright = robot_2->Vcontrols[i][1];
-      srv.request.Vtop = robot_2->Vcontrols[i][2];
-
-      // NEED TO CHECK THIS
-      srv.request.div = 1;
-
+      i++;
       ROS_DEBUG("Calling Service\n");
-      
-      if(client.call(srv)) {
-	ROS_DEBUG("Send Confirmation: %i\n", srv.response.confirm_sent);
-      }
-      else {
-	ROS_ERROR("Failed to call service: speed_command\n");
-      }
     }
     // if we are done, send stop command and close data file
     else {
-      //stopRobots();
+      srv.request.robot_index = robot_2->RobotMY;
+      srv.request.type = 'q';
+      srv.request.Vleft = 0.0;
+      srv.request.Vright = 0.0;
+      srv.request.Vtop = 0.0;
+      srv.request.div = 3;
+      
       if(stop_flag == 0) ROS_INFO("Stopping Robots!\n");
       stop_flag = 1;
     }
     
+    // send request to service
+    if(client.call(srv)) {
+      if(srv.response.confirm_sent == 1) ROS_DEBUG("Send Successful: speed_command\n");
+      else if(srv.response.confirm_sent == 0) ROS_DEBUG("Send Request Denied: speed_command\n");
+    }
+    else {
+      ROS_ERROR("Failed to call service: speed_command\n");
+    }
+    
     // increment count
-    i++;
+    start_flag = false;
   }
 
 
