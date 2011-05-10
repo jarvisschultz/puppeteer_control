@@ -92,75 +92,124 @@ public:
 
     // create callback timer that will run with a period of DT from robot struct
     timer = n_.createTimer(ros::Duration(robot_2->DT), &OpenLoopController::timerCallback, this);
-
-    ROS_INFO("Beginning movement execution\n");
   }
 
   
   void timerCallback(const ros::TimerEvent& e) {
     //ROS_DEBUG("timerCallback triggered\n");
 
-    // send the start string if we are just starting
-    if(start_flag == true) {
-      srv.request.robot_index = robot_2->RobotMY;
-      srv.request.type = 'm';
-      srv.request.Vleft = 0.0;
-      srv.request.Vright = 0.0;
-      srv.request.Vtop = 0.0;
-      srv.request.div = 0;
-    }
-    // check to see if we are done with the list of commands
-    // if we aren't done, load next command to service request 
-    else if(i < robot_2->num && exit_flag == false && start_flag == false) {
-      ROS_DEBUG("%5.2f\n",100.0*i/robot_2->num);      
-
-      srv.request.robot_index = robot_2->RobotMY;
-      srv.request.type = 'h';  // NEED TO CHECK THIS
-      srv.request.Vleft = robot_2->Vcontrols[i][0];
-      srv.request.Vright = robot_2->Vcontrols[i][1];
-      srv.request.Vtop = robot_2->Vcontrols[i][2];
-      srv.request.div = 3;  // NEED TO CHECK THIS
-
-      //srv.request.Vleft = 1.0;
-      //srv.request.Vright = 1.0;
-      //srv.request.Vtop = 1.0;
-
-      i++;
-      ROS_DEBUG("Calling Service\n");
-    }
-    // if we are done, send stop command and close data file
-    else {
-      srv.request.robot_index = robot_2->RobotMY;
-      srv.request.type = 'q';
-      srv.request.Vleft = 0.0;
-      srv.request.Vright = 0.0;
-      srv.request.Vtop = 0.0;
-      srv.request.div = 3;
-      
-      if(stop_flag == false) ROS_INFO("Stopping Robots!\n");
-      stop_flag = true;
-    }
-    
-    // send request to service
-    if(client.call(srv)) {
-      if(srv.response.confirm_sent == 1) {
-	ROS_DEBUG("Send Successful: speed_command\n");
+    int robots_state_req = 3;  // initialize robots_state_req to emergency stop just for safety
+    // check for robots_state_req parameter from keyboard_node
+    if(ros::param::has("robots_state_req"))
+      {
+	ros::param::get("/robots_state_req", robots_state_req);
       }
-      else if(srv.response.confirm_sent == 0) {
-	ROS_DEBUG("Send Request Denied: speed_command\n");
-	static bool request_denied_notify = true;
-	if(request_denied_notify) {
-	  ROS_INFO("Send Requests Denied: speed_command\n");
-	  request_denied_notify = false;
+    else
+      {
+	ROS_ERROR("Cannot Find Parameter: robots_state_req");
+	return;
+      }
+
+    // check robot_state_req and act accordingly
+    // are we in idle mode?
+    if(robots_state_req == 0)
+      {
+	// reset flags
+	start_flag = false;
+	stop_flag = false;
+      }
+  
+    // are we in run mode?
+    else if(robots_state_req == 1) 
+      {
+	if(start_flag == true)
+	  { 
+	    ROS_INFO("Beginning movement execution\n");
+
+	    srv.request.robot_index = robot_2->RobotMY;
+	    srv.request.type = 'm';
+	    srv.request.Vleft = 0.0;
+	    srv.request.Vright = 0.0;
+	    srv.request.Vtop = 0.0;
+	    srv.request.div = 0;
+	  }
+	// check to see if we are done with the list of commands
+	// if we aren't done, load next command to service request 
+	else if(i < robot_2->num && start_flag == false) 
+	  {
+	    ROS_DEBUG("%5.2f\n",100.0*i/robot_2->num);      
+	    
+	    srv.request.robot_index = robot_2->RobotMY;
+	    srv.request.type = 'h';  // NEED TO CHECK THIS
+	    srv.request.Vleft = robot_2->Vcontrols[i][0];
+	    srv.request.Vright = robot_2->Vcontrols[i][1];
+	    srv.request.Vtop = robot_2->Vcontrols[i][2];
+	    srv.request.div = 3;  // NEED TO CHECK THIS
+	    
+	    //srv.request.Vleft = 1.0;
+	    //srv.request.Vright = 1.0;
+	    //srv.request.Vtop = 1.0;
+	    
+	    i++;
+	    ROS_DEBUG("Calling Service\n");
+	  }
+
+	// send request to service
+	if(client.call(srv)) {
+	  if(srv.response.confirm_sent == 1) {
+	    ROS_DEBUG("Send Successful: speed_command\n");
+	  }
+	  else if(srv.response.confirm_sent == 0) {
+	    ROS_DEBUG("Send Request Denied: speed_command\n");
+	    static bool request_denied_notify = true;
+	    if(request_denied_notify) {
+	      ROS_INFO("Send Requests Denied: speed_command\n");
+	      request_denied_notify = false;
+	    }
+	  }
 	}
+	else 
+	  {
+	    ROS_ERROR("Failed to call service: speed_command\n");
+	  }
+      
+	start_flag = false;
       }
-    }
-    else {
-      ROS_ERROR("Failed to call service: speed_command\n");
-    }
-    
-    // increment count
-    start_flag = false;
+
+    // have we gotten a stop request or an emergency stop request?
+    else if(robots_state_req == 2 || robots_state_req == 3)
+      {
+	if(robots_state_req == 3) ROS_WARN("Emergency Stop Detected");
+
+	srv.request.robot_index = robot_2->RobotMY;
+	srv.request.type = 'q';
+	srv.request.Vleft = 0.0;
+	srv.request.Vright = 0.0;
+	srv.request.Vtop = 0.0;
+	srv.request.div = 3;
+      
+	if(stop_flag == false) ROS_INFO("Stopping Robots!\n");
+	stop_flag = true;
+
+	// send request to service
+	if(client.call(srv)) {
+	  if(srv.response.confirm_sent == 1) {
+	    ROS_DEBUG("Send Successful: speed_command\n");
+	  }
+	  else if(srv.response.confirm_sent == 0) {
+	    ROS_DEBUG("Send Request Denied: speed_command\n");
+	    static bool request_denied_notify = true;
+	    if(request_denied_notify) {
+	      ROS_INFO("Send Requests Denied: speed_command\n");
+	      request_denied_notify = false;
+	    }
+	  }
+	}
+	else 
+	  {
+	    ROS_ERROR("Failed to call service: speed_command\n");
+	  }
+      }    
   }
 
 
