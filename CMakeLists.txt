@@ -30,3 +30,4 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #target_link_libraries(example ${PROJECT_NAME})
 
 rosbuild_add_executable(puppeteer_control src/puppeteercontrol.cpp)
+rosbuild_add_executable(straight_control src/straight_driving.cpp)
