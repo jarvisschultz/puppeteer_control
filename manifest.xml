@@ -10,6 +10,7 @@
   <url>http://ros.org/wiki/puppeteer_control</url>
   <depend package="command_msgs"/>
   <depend package="std_msgs"/>
+  <depend package="rospy"/>
   <depend package="roscpp"/>
 
 </package>
