@@ -127,11 +127,11 @@ public:
 	    // send request to service
 	    if(client.call(srv))
 	    {
-		if(srv.response.confirm_sent == 1)
+		if(srv.response.error == 1)
 		{
 		    ROS_DEBUG("Send Successful: speed_command\n");
 		}
-		else if(srv.response.confirm_sent == 0)
+		else if(srv.response.error == 0)
 		{
 		    ROS_DEBUG("Send Request Denied: speed_command\n");
 		    static bool request_denied_notify = true;
