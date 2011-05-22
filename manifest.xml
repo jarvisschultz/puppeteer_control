@@ -8,7 +8,7 @@
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/puppeteer_control</url>
-  <depend package="command_msgs"/>
+  <depend package="puppeteer_msgs"/>
   <depend package="std_msgs"/>
   <depend package="roscpp"/>
 
