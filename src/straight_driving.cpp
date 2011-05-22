@@ -14,7 +14,7 @@
 
 #include <ros/ros.h>
 #include <ros/package.h>
-#include <command_msgs/speed_command.h>
+#include <puppeteer_msgs/speed_command.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,13 +55,13 @@ private:
     ros::NodeHandle n_;
     ros::Timer timer;
     ros::ServiceClient client;
-    command_msgs::speed_command srv;
+    puppeteer_msgs::speed_command srv;
 
  
 public:
     StraightController(){
 	// note: the string at the end of this command matters
-	client = n_.serviceClient<command_msgs::speed_command>("send_serial_data");
+	client = n_.serviceClient<puppeteer_msgs::speed_command>("send_serial_data");
 
 	robot = GetParameters();
 	    

@@ -15,7 +15,7 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 
-#include <command_msgs/speed_command.h>
+#include <puppeteer_msgs/speed_command.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,7 +62,7 @@ private:
     ros::NodeHandle n_;
     ros::Timer timer;
     ros::ServiceClient client;
-    command_msgs::speed_command srv;
+    puppeteer_msgs::speed_command srv;
 
  
 public:
@@ -73,7 +73,7 @@ public:
     start_flag = true;
     
     // note: the string at the end of this command matters
-    client = n_.serviceClient<command_msgs::speed_command>("speed_command");
+    client = n_.serviceClient<puppeteer_msgs::speed_command>("speed_command");
   
     ROS_INFO("Reading Controls\n");
 
