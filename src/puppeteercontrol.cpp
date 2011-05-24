@@ -98,7 +98,7 @@ public:
 
 
     // read file into robot struct
-    robot = ReadControls(filename, 3);
+    robot = ReadControls(filename, 1);
 
     // create callback timer that will run with a period of DT from robot struct
     timer = n_.createTimer(ros::Duration(robot->DT), &OpenLoopController::timerCallback, this);
@@ -152,7 +152,7 @@ public:
 	ROS_DEBUG("Calling Service\n");
       }
       else {
-	ros::param::set("system_condition", 2);  // set state to stop
+	ros::param::set("operating_condition", 2);  // set state to stop
       }
 
       // send request to service
