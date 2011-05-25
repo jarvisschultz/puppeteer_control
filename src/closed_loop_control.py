@@ -58,7 +58,12 @@ desired_state = pmsg.State
 
 ## Service names:
 serial_client = rospy.ServiceProxy('speed_command', psrv.speed_command)
-serial_srv = psrv.speed_commandRequest
+robot_index = 2
+div = 3
+Vleft = 0.0
+Vright = 0.0
+Vtop = 0.0
+msgtype = 'm'
 
 ## Number of data points we want to collect for figuring out
 ## coordinate transformations:
@@ -177,7 +182,6 @@ def estimator_callback(data):
     state and the actual state, and sends commands based on this error
     and the optimal feedback gain to the serial node
     """
-
     ## Get current operating state:
     if rospy.has_param("operating_condition"):
         running_flag = rospy.get_param("operating_condition")
@@ -192,12 +196,11 @@ def estimator_callback(data):
             rospy.loginfo("Sending start string")
             ## If we have just started, then let's send the command to
             ## unlock the robot:
-            serial_srv.robot_index = 2
-            serial_srv.type = 'm'
-            serial_srv.Vleft = 0.0
-            serial_srv.Vright = 0.0
-            serial_srv.Vtop = 0.0
-            serial_srv.div = 0
+            msgtype = 'm'
+            Vleft = 0.0
+            Vright = 0.0
+            Vtop = 0.0
+            div = 0
             start_flag == False
             call_count = 0
             avg_mass_pos = np.array([0.0, 0.0, 0.0])
@@ -234,12 +237,11 @@ def estimator_callback(data):
                     tbase = tbase.to_sec()
                     t_current = 0.0
                     ## Let's just send the feedforward controls:
-                    serial_srv.robot_index = 2
-                    serial_srv.type = 'h'
-                    serial_srv.Vleft = (xopt[0][6])/(Dwheel/2.0)
-                    serial_srv.Vright = (xopt[0][6])/(Dwheel/2.0)
-                    serial_srv.Vtop = (xopt[0][7])/(Dpulley/2.0)
-                    serial_srv.div = 3
+                    msgtype = 'h'
+                    Vleft = (xopt[0][6])/(Dwheel/2.0)
+                    Vright = (xopt[0][6])/(Dwheel/2.0)
+                    Vtop = (xopt[0][7])/(Dpulley/2.0)
+                    div = 3
                 else:
                     ## Now, each time we hit this else, let's get the
                     ## total time elapsed, and the dt value
@@ -261,14 +263,21 @@ def estimator_callback(data):
                     ## Let's now use the feedback gain and the state
                     ## error to determine what the new controls should
                     ## be:
-                    
-                    ## Call the service for the serial node to send
-                    ## out these controls:
+                    calculate_controls(uk,xk,Kk)
 
-                    ## Now, let's publish the markers representing the
-                    ## robot and the mass
+    ## Everytime this loop is done we call the service:
+    try:
+        resp = serial_client(robot_index, msgtype, Vleft, Vright, Vtop, div)
+    except rospy.ServiceException:
+        rospy.logwarn("Failed to call service: speed_command")
 
+    if resp == False:
+        rospy.logdebug("Send Successful: speed_command")
+    else:
+        rospy.logdebug("Send Request Denied: speed_command")
 
+    return
+        
 def transorm_state(data):
     """
     This function takes in the system state published from the
@@ -298,6 +307,9 @@ def transorm_state(data):
     vec = np.array([data.xm-data.xc,data.ym-robot_height])
     norm_vec = vec/np.linalg.norm(vec)
     actual_state.r_dot = np.dot(mass_rel_vel,norm_vec)
+
+    ## Now set velocity values for integration purposes:
+    v_last = np.array([actual_state.xc_dot, actual_state.r_dot])
 
     return
 
@@ -365,7 +377,16 @@ def calculate_controls(uk,xk,Kk):
     u_last = u_current
     u_current = np.array(uk)+np.dot(Kmat,xactual-xk)
     ## Now, we need to integrate this to get the type of values we want 
-    
+    ## v_last = v_current
+    v_current = np.array((v_last+(u_last+u_current)/2.0*tstep)).tolist()
+    ## Transform linear velocities to angular velocities:
+    msgtype = 'h'
+    Vleft = v_current[0]/(Dwheel/2.0)
+    Vright = v_current[0]/(Dwheel/2.0)
+    Vtop = v_current[1]/(Dpulley/2.0)
+    div = 3
+
+    return
 
 def main():
     """
