@@ -20,8 +20,6 @@ import os
 from std_msgs.msg import String
 import puppeteer_msgs.msg as pmsg
 import puppeteer_msgs.srv as psrv
-import ctypes, time
-from ctypes import util
 
 defintion = {'__builtings__' : __builtins__}
 
@@ -41,9 +39,12 @@ tf = 0.0 ## Total simulation time
 Length = 0 ## Number of entries in each vector
 
 ## Transformation parameters for system
-R = []
+##R = []
+R = np.array([[cos(pi), sin(pi), 0],
+              [-sin(pi), cos(pi), 0],
+              [0, 0, 1]])
 trans = []
-robot_trans = []
+robot_trans = 0.0
 robot_height = 0.0
 
 ## Time variables:
@@ -53,8 +54,8 @@ t_last = 0.0
 ## Publisher names:
 actual_state_pub = rospy.Publisher('transformed_state', pmsg.State)
 desired_state_pub = rospy.Publisher('desired_state', pmsg.State)
-actual_state = pmsg.State
-desired_state = pmsg.State
+actual_state = pmsg.State()
+desired_state = pmsg.State()
 
 ## Service names:
 serial_client = rospy.ServiceProxy('speed_command', psrv.speed_command)
@@ -78,6 +79,16 @@ u_last = 0.0
 v_last = 0.0
 u_current = 0.0
 v_current = 0.0
+
+## Flags:
+start_flag = True
+stop_flag = False
+calibrate_flag = True
+
+## Counters:
+call_count = 0
+avg_mass_pos = []
+avg_robot_pos = []
 
 ################################################################################
 ################################################################################
@@ -182,6 +193,7 @@ def estimator_callback(data):
     state and the actual state, and sends commands based on this error
     and the optimal feedback gain to the serial node
     """
+    global calibrate_flag, call_count, avg_robot_pos, avg_mass_pos, R, trans
     ## Get current operating state:
     if rospy.has_param("operating_condition"):
         running_flag = rospy.get_param("operating_condition")
@@ -189,8 +201,47 @@ def estimator_callback(data):
     if (running_flag == 0): ## we are then in idle mode:
         start_flag = True
         stop_flag = False
+        calibrate_flag = True
         return
     elif (running_flag == 1):
+        rospy.loginfo("Collecting transformation data")
+        if (calibrate_flag == True):
+            calibrate_flag = False
+            call_count = 0
+            avg_mass_pos = np.array([0.0, 0.0, 0.0])
+            avg_robot_pos = 0.0
+        ## For the first few times through this loop, let's just
+        ## collect the data so that we can define the necessary
+        ## transformation parameters:
+        if call_count <= npts:
+            call_count+=1
+            avg_mass_pos += np.array([data.xm, data.ym, 0.0])/call_count
+            avg_robot_pos += data.xc/call_count
+        elif call_count == npts+1:
+            ## Then the data has been collected, and we can set
+            ## the global transformation parameters:
+            ## R = np.array([[cos(pi), sin(pi), 0],
+            ##               [-sin(pi), cos(pi), 0],
+            ##               [0, 0, 1]])
+            mass_start = np.array([xopt[0][0],xopt[0][1],0])
+            trans = mass_start-np.dot(R,avg_mass_pos)
+            robot_start = xopt[0][2]
+            robot_trans = robot_start-avg_robot_pos
+            call_count += 1
+        else:
+            ## Now we can transform the state published by the
+            ## estimator into the correct coordinate system
+            transorm_state(data)
+            ## Now, let's publish both the actual state and
+            ## the desired state:
+            rospy.loginfo("Publishing Data:")
+            actual_state_pub.publish(actual_state)
+            rospy.loginfo("Publishing More Data:")
+            desired_state_pub.publish(desired_state)
+            rospy.loginfo("Returning")
+            return
+        
+    elif (running_flag == 2):
         ## Then it is time to start driving the robot
         if (start_flag == True):
             rospy.loginfo("Sending start string")
@@ -215,6 +266,7 @@ def estimator_callback(data):
                 avg_mass_pos += np.array([data.xm, data.ym, 0.0])/call_count
                 avg_robot_pos += data.xc/call_count
             elif call_count == npts+1:
+                rospy.loginfo("Generating global transforms")
                 ## Then the data has been collected, and we can set
                 ## the global transformation parameters:
                 R = np.array([[cos(pi), sin(pi), 0],
@@ -258,23 +310,23 @@ def estimator_callback(data):
                     uk,xk,Kk = interpolate_optimal(t_current)
                     ## Now, let's publish both the actual state and
                     ## the desired state:
-                    actual_state_pub.(actual_state)
-                    desired_state_pub.(desired_state)
+                    actual_state_pub.publish(actual_state)
+                    desired_state_pub.publish(desired_state)
                     ## Let's now use the feedback gain and the state
                     ## error to determine what the new controls should
                     ## be:
                     calculate_controls(uk,xk,Kk)
 
-    ## Everytime this loop is done we call the service:
-    try:
-        resp = serial_client(robot_index, msgtype, Vleft, Vright, Vtop, div)
-    except rospy.ServiceException:
-        rospy.logwarn("Failed to call service: speed_command")
+        ## Everytime this loop is done we call the service:
+        try:
+            resp = serial_client(robot_index, msgtype, Vleft, Vright, Vtop, div)
+        except rospy.ServiceException:
+            rospy.logwarn("Failed to call service: speed_command")
 
-    if resp == False:
-        rospy.logdebug("Send Successful: speed_command")
-    else:
-        rospy.logdebug("Send Request Denied: speed_command")
+        if resp == False:
+            rospy.logdebug("Send Successful: speed_command")
+        else:
+            rospy.logdebug("Send Request Denied: speed_command")
 
     return
         
@@ -283,15 +335,16 @@ def transorm_state(data):
     This function takes in the system state published from the
     estimator node and transforms it to the correct coordinate system.
     """
+    global R, trans
     ## First, let's use the global transformation information to
     ## transform the mass positions and velocities
     pub_pos = np.array([data.xm, data.ym, 0.0])
-    new_pos = (dot(R,pub_pos)+trans).tolist()
+    new_pos = (np.dot(R,pub_pos)+trans).tolist()
     actual_state.xm = new_pos[0]
     actual_state.ym = new_pos[1]
     ## Now, we can do the same thing with the velocities:
     pub_vel = np.array([data.xm_dot, data.ym_dot, 0.0])
-    new_vel = (dot(R,pub_vel)).tolist()
+    new_vel = (np.dot(R,pub_vel)).tolist()
     actual_state.xm_dot = new_vel[0]
     actual_state.ym_dot = new_vel[1]
 
@@ -393,25 +446,6 @@ def main():
     This is the main loop.  It makes variable declarations, and starts
     ros.spin()
     """
-    ## dll_name = "libkbhit_dll.so"
-    ## dllabspath = os.path.dirname(os.path.abspath(__file__))+os.path.sep+dll_name
-    ## try:
-    ##     kblib = ctypes.CDLL(dllabspath)
-    ## except:
-    ##     print "Not loaded"
-
-    ## try:
-    ##     kbhit = kblib.kbhit
-    ## except:
-    ##     print "Function not found"
-
-    ## while 1:
-    ##     x = kbhit()
-    ##     if x == 1:
-    ##         print "Button Press!"
-    ##         val = sys.stdin.readline()
-    ##         print val
-        
     ## The first thing that we do is call the text reading function:
     DIR = os.popen("rospack find puppeteer_control").read()
     DIR = DIR[0:-1]+"/data/"
