@@ -241,7 +241,7 @@ public:
     if(fgetc(fp) == EOF) ROS_ERROR("fscanf failure");
 
     size_t alloc;
-    alloc = sizeof(*robot) + sizeof(robot->Vcontrols[0])*(1495);
+    alloc = sizeof(*robot) + sizeof(robot->Vcontrols[0])*((int) current_val);
     robot = (Control*) malloc(alloc);
     
     // Set robot identification:
