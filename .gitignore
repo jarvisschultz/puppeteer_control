@@ -6,7 +6,6 @@ Makefile
 *~
 bin/
 build/
-data/
 
 
 # github ignore suggestions...

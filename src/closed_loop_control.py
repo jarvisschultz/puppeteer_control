@@ -366,6 +366,9 @@ def transorm_state(data):
     ## Now set velocity values for integration purposes:
     v_last = np.array([actual_state.xc_dot, actual_state.r_dot])
 
+    ## Now set timestamp:
+    actual_state.header.stamp = rospy.Time.now()
+
     return
 
 def interpolate_optimal(t_current):
@@ -408,6 +411,9 @@ def interpolate_optimal(t_current):
     desired_state.ym_dot = xinterp[5]
     desired_state.xc_dot = xinterp[6]
     desired_state.r_dot = xinterp[7]
+    
+    ## Now set timestamp:
+    desired_state.header.stamp = rospy.Time.now()
     
     return uinterp, xinterp, Kinterp
     
@@ -458,7 +464,7 @@ def main():
 
     ## Now let's check for the keyboard_node parameter:
     if (rospy.has_param("operating_condition")):
-        rospy.set_param("operating_condition", 0)
+        rospy.set_param("/operating_condition", 0)
     else:
         rospy.logwarn("Cannot Find Parameter: operating_condition")
        
@@ -468,7 +474,7 @@ def main():
     except rospy.ROSInterruptException: pass
 
     ## Set parameters for robot:
-    rospy.set_param("robot_index", index)
+    rospy.set_param("/robot_index", index)
 
 if __name__=='__main__':
     main()
