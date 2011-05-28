@@ -39,17 +39,15 @@ tf = 0.0 ## Total simulation time
 Length = 0 ## Number of entries in each vector
 
 ## Transformation parameters for system
-##R = []
-R = np.array([[cos(pi), sin(pi), 0],
-              [-sin(pi), cos(pi), 0],
-              [0, 0, 1]])
-trans = []
+R = np.array([])
+trans = np.array([])
 robot_trans = 0.0
 robot_height = 0.0
 
 ## Time variables:
 t_current = 0.0
 t_last = 0.0
+tstep = 0.0
 
 ## Publisher names:
 actual_state_pub = rospy.Publisher('transformed_state', pmsg.State)
@@ -87,8 +85,8 @@ calibrate_flag = True
 
 ## Counters:
 call_count = 0
-avg_mass_pos = []
-avg_robot_pos = []
+avg_mass_pos = np.array([])
+avg_robot_pos = np.array([])
 
 ################################################################################
 ################################################################################
@@ -110,6 +108,7 @@ def build_dictionary(filename):
     create a dictionary that contains all of the results of an
     optimization.
     """
+    global robot_height, dt, tf, Length
     f = open(filename, 'rU')
     ## Now, let's read the system parameters:
     line = f.readline()
@@ -193,7 +192,9 @@ def estimator_callback(data):
     state and the actual state, and sends commands based on this error
     and the optimal feedback gain to the serial node
     """
-    global calibrate_flag, call_count, avg_robot_pos, avg_mass_pos, R, trans
+    global calibrate_flag, call_count, avg_robot_pos
+    global avg_mass_pos, R, trans, robot_trans, tstep
+    
     ## Get current operating state:
     if rospy.has_param("operating_condition"):
         running_flag = rospy.get_param("operating_condition")
@@ -204,7 +205,7 @@ def estimator_callback(data):
         calibrate_flag = True
         return
     elif (running_flag == 1):
-        rospy.loginfo("Collecting transformation data")
+        ## rospy.loginfo("Collecting transformation data")
         if (calibrate_flag == True):
             calibrate_flag = False
             call_count = 0
@@ -214,15 +215,17 @@ def estimator_callback(data):
         ## collect the data so that we can define the necessary
         ## transformation parameters:
         if call_count <= npts:
-            call_count+=1
-            avg_mass_pos += np.array([data.xm, data.ym, 0.0])/call_count
-            avg_robot_pos += data.xc/call_count
+            call_count += 1
+            avg_mass_pos = ((avg_mass_pos*(call_count-1)+
+                             np.array([data.xm, data.ym, 0.0]))
+                            /float(call_count))
+            avg_robot_pos = (data.xc*(call_count-1))/float(call_count)
         elif call_count == npts+1:
             ## Then the data has been collected, and we can set
             ## the global transformation parameters:
-            ## R = np.array([[cos(pi), sin(pi), 0],
-            ##               [-sin(pi), cos(pi), 0],
-            ##               [0, 0, 1]])
+            R = np.array([[cos(pi), sin(pi), 0],
+                          [-sin(pi), cos(pi), 0],
+                          [0, 0, 1]])
             mass_start = np.array([xopt[0][0],xopt[0][1],0])
             trans = mass_start-np.dot(R,avg_mass_pos)
             robot_start = xopt[0][2]
@@ -234,11 +237,8 @@ def estimator_callback(data):
             transorm_state(data)
             ## Now, let's publish both the actual state and
             ## the desired state:
-            rospy.loginfo("Publishing Data:")
             actual_state_pub.publish(actual_state)
-            rospy.loginfo("Publishing More Data:")
             desired_state_pub.publish(desired_state)
-            rospy.loginfo("Returning")
             return
         
     elif (running_flag == 2):
@@ -263,8 +263,10 @@ def estimator_callback(data):
             ## transformation parameters:
             if call_count <= npts:
                 call_count+=1
-                avg_mass_pos += np.array([data.xm, data.ym, 0.0])/call_count
-                avg_robot_pos += data.xc/call_count
+                avg_mass_pos = ((avg_mass_pos*(call_count-1)+
+                             np.array([data.xm, data.ym, 0.0]))
+                            /float(call_count))
+                avg_robot_pos = (data.xc*(call_count-1))/float(call_count)            
             elif call_count == npts+1:
                 rospy.loginfo("Generating global transforms")
                 ## Then the data has been collected, and we can set
@@ -335,7 +337,7 @@ def transorm_state(data):
     This function takes in the system state published from the
     estimator node and transforms it to the correct coordinate system.
     """
-    global R, trans
+    global R, trans, robot_height
     ## First, let's use the global transformation information to
     ## transform the mass positions and velocities
     pub_pos = np.array([data.xm, data.ym, 0.0])
@@ -372,6 +374,7 @@ def interpolate_optimal(t_current):
     data read in from Mathematica and some interpolation to return the
     desired state, controls, and feedback gain.
     """
+    global dt, uopt, xopt, Kt
     ## So given a time we need to find the entries in the optimal
     ## state, inputs and feedback gains between which we need to
     ## interpolate the values
@@ -421,6 +424,8 @@ def calculate_controls(uk,xk,Kk):
 
     It then returns these values.
     """
+    global u_current, u_last, v_current, v_last, tstep, Dwheel, Dpulley
+    global div, Vleft, Vright, Vtop, msgtype
     ## First assemble the actual state into an array:
     d = actual_state
     xactual = np.array([d.xm,d.ym,d.xc,d.r,d.xm_dot,d.ym_dot,d.xc_dot,d.r_dot])
