@@ -30,6 +30,11 @@ defintion = {'__builtings__' : __builtins__}
 ################################################################################
 ################################################################################
 
+## Robot Information:
+Dwheel = 3.0*0.0254
+Dpulley = 0.75*.0254
+index = 2
+
 ## Optimization Parameters:
 xopt = [] ## Optimal state
 uopt = [] ## Optimal inputs
@@ -57,7 +62,6 @@ desired_state = pmsg.State()
 
 ## Service names:
 serial_client = rospy.ServiceProxy('speed_command', psrv.speed_command)
-robot_index = 2
 div = 3
 Vleft = 0.0
 Vright = 0.0
@@ -67,10 +71,6 @@ msgtype = 'm'
 ## Number of data points we want to collect for figuring out
 ## coordinate transformations:
 npts = 30
-
-## Robot geometry:
-Dwheel = 3.0*0.0254
-Dpulley = 0.75*.0254
 
 ## Input values:
 u_last = 0.0
@@ -321,7 +321,7 @@ def estimator_callback(data):
 
         ## Everytime this loop is done we call the service:
         try:
-            resp = serial_client(robot_index, msgtype, Vleft, Vright, Vtop, div)
+            resp = serial_client(index, msgtype, Vleft, Vright, Vtop, div)
         except rospy.ServiceException:
             rospy.logwarn("Failed to call service: speed_command")
 
@@ -467,6 +467,8 @@ def main():
         ros_setup()
     except rospy.ROSInterruptException: pass
 
+    ## Set parameters for robot:
+    rospy.set_param("robot_index", index)
 
 if __name__=='__main__':
     main()
