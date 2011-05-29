@@ -52,7 +52,9 @@ robot_height = 0.0
 ## Time variables:
 t_current = 0.0
 t_last = 0.0
-tstep = 0.0
+t_step = 0.0
+t_base = 0.0
+t = rospy.Time
 
 ## Publisher names:
 actual_state_pub = rospy.Publisher('transformed_state', pmsg.State)
@@ -61,7 +63,7 @@ actual_state = pmsg.State()
 desired_state = pmsg.State()
 
 ## Service names:
-serial_client = rospy.ServiceProxy('speed_command', psrv.speed_command)
+serial_client = rospy.ServiceProxy('speed_command', psrv.speed_command, headers=None)
 div = 3
 Vleft = 0.0
 Vright = 0.0
@@ -82,6 +84,7 @@ v_current = 0.0
 start_flag = True
 stop_flag = False
 calibrate_flag = True
+time_flag = False
 
 ## Counters:
 call_count = 0
@@ -192,8 +195,11 @@ def estimator_callback(data):
     state and the actual state, and sends commands based on this error
     and the optimal feedback gain to the serial node
     """
-    global calibrate_flag, call_count, avg_robot_pos
-    global avg_mass_pos, R, trans, robot_trans, tstep
+    global calibrate_flag, call_count, avg_robot_pos, start_flag
+    global avg_mass_pos, R, trans, robot_trans, msgtype, t, t_base
+    global Vleft, Vright, Vtop, div, time_flag, t_current, t_last, t_step
+
+    resp = True
     
     ## Get current operating state:
     if rospy.has_param("operating_condition"):
@@ -252,21 +258,22 @@ def estimator_callback(data):
             Vright = 0.0
             Vtop = 0.0
             div = 0
-            start_flag == False
+            start_flag = False
             call_count = 0
             avg_mass_pos = np.array([0.0, 0.0, 0.0])
             avg_robot_pos = 0.0
         else:
-            rospy.loginfo("Collecting transformation data")
             ## For the first few times through this loop, let's just
             ## collect the data so that we can define the necessary
             ## transformation parameters:
             if call_count <= npts:
+                rospy.loginfo("Collecting transformation data")
                 call_count+=1
                 avg_mass_pos = ((avg_mass_pos*(call_count-1)+
                              np.array([data.xm, data.ym, 0.0]))
                             /float(call_count))
-                avg_robot_pos = (data.xc*(call_count-1))/float(call_count)            
+                avg_robot_pos = (data.xc*(call_count-1))/float(call_count)
+                return
             elif call_count == npts+1:
                 rospy.loginfo("Generating global transforms")
                 ## Then the data has been collected, and we can set
@@ -280,15 +287,15 @@ def estimator_callback(data):
                 robot_trans = robot_start-avg_robot_pos
                 call_count += 1
                 time_flag = True
+                return
             else:
                 ## Now we are ready to start running the robot
-                rospy.loginfo("Beginning movement execution")
                 ## Get necessary base time info:
                 if time_flag == True:
+                    rospy.loginfo("Beginning movement execution")
                     time_flag = False
-                    t = rospy.Time
-                    tbase = t.now()
-                    tbase = tbase.to_sec()
+                    t_base = t.now()
+                    t_base = t_base.to_sec()
                     t_current = 0.0
                     ## Let's just send the feedforward controls:
                     msgtype = 'h'
@@ -302,33 +309,36 @@ def estimator_callback(data):
                     t_last = t_current
                     t_current = t.now()
                     t_current = t_current.to_sec()-t_base
-                    tstep = t_current-t_base
+                    t_step = t_current-t_base
                     ## Now we can transform the state published by the
                     ## estimator into the correct coordinate system
                     transorm_state(data)
                     ## Now, let's get the desired state by
                     ## interpolating the data that was read in from
                     ## Mathematica
-                    uk,xk,Kk = interpolate_optimal(t_current)
-                    ## Now, let's publish both the actual state and
-                    ## the desired state:
-                    actual_state_pub.publish(actual_state)
-                    desired_state_pub.publish(desired_state)
-                    ## Let's now use the feedback gain and the state
-                    ## error to determine what the new controls should
-                    ## be:
-                    calculate_controls(uk,xk,Kk)
+                    if t_current <= tf:
+                        uk,xk,Kk = interpolate_optimal(t_current)
+                        ## Now, let's publish both the actual state and
+                        ## the desired state:
+                        actual_state_pub.publish(actual_state)
+                        desired_state_pub.publish(desired_state)
+                        ## Let's now use the feedback gain and the state
+                        ## error to determine what the new controls should
+                        ## be:
+                        calculate_controls(uk,xk,Kk)
+                    else:
+                        rospy.set_param("/operating_condition", 0)
 
-        ## Everytime this loop is done we call the service:
-        try:
-            resp = serial_client(index, msgtype, Vleft, Vright, Vtop, div)
-        except rospy.ServiceException:
-            rospy.logwarn("Failed to call service: speed_command")
+            ## Everytime this loop is done we call the service:
+            try:
+                resp = serial_client(index, ord(msgtype), Vleft, Vright, Vtop, div)
+            except rospy.ServiceException:
+                rospy.logwarn("Failed to call service: speed_command")
 
-        if resp == False:
-            rospy.logdebug("Send Successful: speed_command")
-        else:
-            rospy.logdebug("Send Request Denied: speed_command")
+            if resp == False:
+                rospy.logdebug("Send Successful: speed_command")
+            else:
+                rospy.logdebug("Send Request Denied: speed_command")
 
     return
         
@@ -377,14 +387,15 @@ def interpolate_optimal(t_current):
     data read in from Mathematica and some interpolation to return the
     desired state, controls, and feedback gain.
     """
-    global dt, uopt, xopt, Kt
+    global dt, uopt, xopt, Kt, running_flag
     ## So given a time we need to find the entries in the optimal
     ## state, inputs and feedback gains between which we need to
     ## interpolate the values
     index, rem = divmod(t_current, dt)
     index = int(index)
-    if index > Length:
+    if index >= Length-1:
         rospy.logwarn("Trying to interpolate time greater than final time")
+        rospy.set_param("/operating_condition", 0)
         return
 
     ## Interpolate u vals:
@@ -430,25 +441,29 @@ def calculate_controls(uk,xk,Kk):
 
     It then returns these values.
     """
-    global u_current, u_last, v_current, v_last, tstep, Dwheel, Dpulley
+    global u_current, u_last, v_current, v_last, t_step, Dwheel, Dpulley
     global div, Vleft, Vright, Vtop, msgtype
     ## First assemble the actual state into an array:
+     
     d = actual_state
     xactual = np.array([d.xm,d.ym,d.xc,d.r,d.xm_dot,d.ym_dot,d.xc_dot,d.r_dot])
     ## Now transform the feedback gain into a matrix:
     Kmat = np.array([Kk[0:8],Kk[8:]])
     ## Now get the input values:
     u_last = u_current
-    u_current = np.array(uk)+np.dot(Kmat,xactual-xk)
+    u_current = np.array(uk)+0.0*np.dot(Kmat,xactual-xk)
     ## Now, we need to integrate this to get the type of values we want 
     ## v_last = v_current
-    v_current = np.array((v_last+(u_last+u_current)/2.0*tstep)).tolist()
+    v_current = np.array((v_last+(u_last+u_current)/2.0*t_step)).tolist()
+    v_current = [xk[6], xk[7]]
     ## Transform linear velocities to angular velocities:
     msgtype = 'h'
     Vleft = v_current[0]/(Dwheel/2.0)
     Vright = v_current[0]/(Dwheel/2.0)
     Vtop = v_current[1]/(Dpulley/2.0)
     div = 3
+
+    print "Vleft:", Vleft, "\tu_current:", u_current, "\tu_last:", u_last
 
     return
 
