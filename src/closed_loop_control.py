@@ -33,7 +33,7 @@ defintion = {'__builtings__' : __builtins__}
 ## Robot Information:
 Dwheel = 3.0*0.0254
 Dpulley = 0.75*.0254
-index = 2
+index = 1
 
 ## Optimization Parameters:
 xopt = [] ## Optimal state
@@ -209,6 +209,7 @@ def estimator_callback(data):
         start_flag = True
         stop_flag = False
         calibrate_flag = True
+        call_count = 0
         return
     elif (running_flag == 1):
         ## rospy.loginfo("Collecting transformation data")
@@ -328,9 +329,21 @@ def estimator_callback(data):
                         calculate_controls(uk,xk,Kk)
                     else:
                         rospy.set_param("/operating_condition", 0)
+                        rospy.loginfo("Ending Execution")
+                        msgtype = 'h'
+                        Vleft = 0
+                        Vright = 0
+                        Vtop = 0
+                        div = 3
+                        start_flag = True
+                        stop_flag = False
+                        calibrate_flag = True
 
             ## Everytime this loop is done we call the service:
             try:
+                ## First, let't pause for a second to space out the
+                ## commands sent to the robot
+                ## rospy.sleep(0.50*1/30.)
                 resp = serial_client(index, ord(msgtype), Vleft, Vright, Vtop, div)
             except rospy.ServiceException:
                 rospy.logwarn("Failed to call service: speed_command")
@@ -462,8 +475,7 @@ def calculate_controls(uk,xk,Kk):
     Vright = v_current[0]/(Dwheel/2.0)
     Vtop = v_current[1]/(Dpulley/2.0)
     div = 3
-
-    print "Vleft:", Vleft, "\tu_current:", u_current, "\tu_last:", u_last
+    ## print "Vleft:", Vleft, "\tu_current:", u_current, "\tu_last:", u_last
 
     return
 
