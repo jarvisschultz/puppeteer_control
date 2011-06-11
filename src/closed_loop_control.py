@@ -203,9 +203,10 @@ def estimator_callback(data):
     
     ## Get current operating state:
     if rospy.has_param("operating_condition"):
-        running_flag = rospy.get_param("operating_condition")
+        running_flag = rospy.get_param("/operating_condition")
 
-    if (running_flag == 0): ## we are then in idle mode:
+    if (running_flag == 0):
+        ## we are then in idle mode:
         start_flag = True
         stop_flag = False
         calibrate_flag = True
@@ -339,20 +340,30 @@ def estimator_callback(data):
                         stop_flag = False
                         calibrate_flag = True
 
-            ## Everytime this loop is done we call the service:
-            try:
-                ## First, let't pause for a second to space out the
-                ## commands sent to the robot
-                ## rospy.sleep(0.50*1/30.)
-                resp = serial_client(index, ord(msgtype), Vleft, Vright, Vtop, div)
-            except rospy.ServiceException:
-                rospy.logwarn("Failed to call service: speed_command")
+    elif running_flag == 3 or running_flag == 4:
+          msgtype = 'h'
+          Vleft = 0
+          Vright = 0
+          Vtop = 0
+          div = 3
+          start_flag = True
+          stop_flag = False
+          calibrate_flag = True
 
-            if resp == False:
-                rospy.logdebug("Send Successful: speed_command")
-            else:
-                rospy.logdebug("Send Request Denied: speed_command")
+    ## Everytime this loop is done we call the service:
+    try:
+        ## First, let't pause for a second to space out the
+        ## commands sent to the robot
+        rospy.sleep(0.05*1/30.)
+        resp = serial_client(index, ord(msgtype), Vleft, Vright, Vtop, div)
+    except rospy.ServiceException:
+        rospy.logwarn("Failed to call service: speed_command")
 
+    if resp == False:
+        rospy.logdebug("Send Successful: speed_command")
+    else:
+        rospy.logdebug("Send Request Denied: speed_command")
+    
     return
         
 def transorm_state(data):
@@ -464,7 +475,7 @@ def calculate_controls(uk,xk,Kk):
     Kmat = np.array([Kk[0:8],Kk[8:]])
     ## Now get the input values:
     u_last = u_current
-    u_current = np.array(uk)+0.0*np.dot(Kmat,xactual-xk)
+    u_current = np.array(uk)+np.dot(Kmat,xactual-xk)
     ## Now, we need to integrate this to get the type of values we want 
     ## v_last = v_current
     v_current = np.array((v_last+(u_last+u_current)/2.0*t_step)).tolist()
@@ -475,7 +486,11 @@ def calculate_controls(uk,xk,Kk):
     Vright = v_current[0]/(Dwheel/2.0)
     Vtop = v_current[1]/(Dpulley/2.0)
     div = 3
+
+    ## u_cl = np.array(uk)+np.dot(Kmat,xactual-xk)
+    ## print "u_open_loop = ", u_current, "\tu_closed_loop = ", u_cl
     ## print "Vleft:", Vleft, "\tu_current:", u_current, "\tu_last:", u_last
+    
 
     return
 
@@ -484,13 +499,14 @@ def main():
     This is the main loop.  It makes variable declarations, and starts
     ros.spin()
     """
+    global index
     ## The first thing that we do is call the text reading function:
     DIR = os.popen("rospack find puppeteer_control").read()
     DIR = DIR[0:-1]+"/data/"
     build_dictionary(DIR+"OptimalData.txt")
 
     ## Now let's check for the keyboard_node parameter:
-    if (rospy.has_param("operating_condition")):
+    if (rospy.has_param("/operating_condition")):
         rospy.set_param("/operating_condition", 0)
     else:
         rospy.logwarn("Cannot Find Parameter: operating_condition")
