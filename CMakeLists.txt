@@ -31,3 +31,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 rosbuild_add_executable(puppeteer_control src/puppeteercontrol.cpp)
 rosbuild_add_executable(straight_control src/straight_driving.cpp)
+rosbuild_add_executable(wiimote_control src/wiimote_control.cpp include/wiiuse.h)
+target_link_libraries(wiimote_control ${PROJECT_SOURCE_DIR}/lib/libwiiuse.so)
