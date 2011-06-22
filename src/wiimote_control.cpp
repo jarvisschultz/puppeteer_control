@@ -58,24 +58,31 @@ public:
 	    ros::param::set("/operating_condition", 0);
 	}
 	
-	// OK, so now we need to get the user's input as to which robot we are trying to control:
-	fputs("Which Robot Are You Controlling?: ", stdout);
-	fflush(stdout);
-	if ( fgets(InputString, sizeof InputString, stdin) != NULL )
+	if (!ros::param::has("robot_index"))
 	{
-	    char *newline = strchr(InputString, '\n'); /* search for newline character */
-	    if ( newline != NULL )
+	    // OK, so now we need to get the user's input as to which robot we are trying to control:
+	    fputs("Which Robot Are You Controlling?: ", stdout);
+	    fflush(stdout);
+	    if ( fgets(InputString, sizeof InputString, stdin) != NULL )
 	    {
-		*newline = '\0'; /* overwrite trailing newline */
+		char *newline = strchr(InputString, '\n'); /* search for newline character */
+		if ( newline != NULL )
+		{
+		    *newline = '\0'; /* overwrite trailing newline */
+		}
+		printf("You are controlling robot %s\n", InputString);
 	    }
-	    printf("You are controlling robot %s\n", InputString);
+
+	    // Now we need to convert the user's input into an integer
+	    sscanf(InputString, "%d", &robot_index);
+	    // Now, let's set the global robot_index:
+	    ros::param::set("/robot_index", robot_index);
 	}
-
-	// Now we need to convert the user's input into an integer and call the function
-	// that sends the data out the PC's serial port:
-	sscanf(InputString, "%d", &robot_index);
-
-
+	else
+	{
+	    ros::param::get("/robot_index", robot_index);
+	}
+	
 	wiimotes =  wiiuse_init(MAX_WIIMOTES);
 	found = wiiuse_find(wiimotes, MAX_WIIMOTES, 5);
 	if (!found)
@@ -324,6 +331,7 @@ public:
 		printf("You are controlling robot %s\n", InputString);
 		sscanf(InputString, "%d", &robot_index);
 		BroadcastFlag = 0;
+		ros::param::set("/robot_index", robot_index);
 	    }
 	    else if(strncmp(InputString,"a",1)==0)
 	    {
@@ -331,6 +339,7 @@ public:
 		// Set the xbee address to broadcast mode:
 		BroadcastFlag = 1;
 		robot_index = 9;
+		ros::param::set("/robot_index", robot_index);
 	    }
 	}
 
