@@ -33,7 +33,7 @@ defintion = {'__builtings__' : __builtins__}
 ## Robot Information:
 Dwheel = 3.0*0.0254
 Dpulley = 0.75*.0254
-index = 1
+robot_index = 1
 
 ## Optimization Parameters:
 xopt = [] ## Optimal state
@@ -126,6 +126,7 @@ def build_dictionary(filename):
     line = f.readline()
     match = re.search(r'[0-9].*',line)
     robot_height = float(line[match.start():])
+    rospy.set_param("/robot_initial_height", robot_height)
 
     ## Now, we are ready to start reading in the rest of the values:
     ## First, the optimal trajectory
@@ -355,7 +356,7 @@ def estimator_callback(data):
         ## First, let't pause for a second to space out the
         ## commands sent to the robot
         rospy.sleep(0.05*1/30.)
-        resp = serial_client(index, ord(msgtype), Vleft, Vright, Vtop, div)
+        resp = serial_client(robot_index, ord(msgtype), Vleft, Vright, Vtop, div)
     except rospy.ServiceException:
         rospy.logwarn("Failed to call service: speed_command")
 
@@ -486,12 +487,6 @@ def calculate_controls(uk,xk,Kk):
     Vright = v_current[0]/(Dwheel/2.0)
     Vtop = v_current[1]/(Dpulley/2.0)
     div = 3
-
-    ## u_cl = np.array(uk)+np.dot(Kmat,xactual-xk)
-    ## print "u_open_loop = ", u_current, "\tu_closed_loop = ", u_cl
-    ## print "Vleft:", Vleft, "\tu_current:", u_current, "\tu_last:", u_last
-    
-
     return
 
 def main():
@@ -499,7 +494,7 @@ def main():
     This is the main loop.  It makes variable declarations, and starts
     ros.spin()
     """
-    global index
+    global robot_index
     ## The first thing that we do is call the text reading function:
     DIR = os.popen("rospack find puppeteer_control").read()
     DIR = DIR[0:-1]+"/data/"
@@ -510,6 +505,7 @@ def main():
         rospy.set_param("/operating_condition", 0)
     else:
         rospy.logwarn("Cannot Find Parameter: operating_condition")
+        rospy.set_param("/operating_condition", 0)
        
     ## Call a function that initializes the publisher and subscriber:
     try:
@@ -517,7 +513,7 @@ def main():
     except rospy.ROSInterruptException: pass
 
     ## Set parameters for robot:
-    rospy.set_param("/robot_index", index)
+    rospy.set_param("/robot_index", robot_index)
 
 if __name__=='__main__':
     main()
