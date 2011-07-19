@@ -191,22 +191,23 @@ public:
       stop_flag = true;
 
       // send request to service
-      if(client.call(srv)) {
-	if(srv.response.error == false) {
-	  ROS_DEBUG("Send Successful: speed_command\n");
-	}
-	else {
-	  ROS_DEBUG("Send Request Denied: speed_command\n");
-	  static bool request_denied_notify = true;
-	  if(request_denied_notify) {
-	    ROS_INFO("Send Requests Denied: speed_command\n");
-	    request_denied_notify = false;
+      if(client.call(srv))
+      {
+	  if(srv.response.error == false)
+	      ROS_DEBUG("Send Successful: speed_command\n");
+	  else
+	  {
+	      ROS_DEBUG("Send Request Denied: speed_command\n");
+	      static bool request_denied_notify = true;
+	      if(request_denied_notify)
+	      {
+		  ROS_INFO("Send Requests Denied: speed_command\n");
+		  request_denied_notify = false;
+	      }
 	  }
-	}
       }
-      else {
-	ROS_ERROR("Failed to call service: speed_command\n");
-      }
+      else 
+	  ROS_ERROR("Failed to call service: speed_command\n");
     }    
   }
 
