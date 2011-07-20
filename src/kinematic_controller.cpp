@@ -45,7 +45,8 @@
 //---------------------------------------------------------------------------
 #define DWHEEL	(0.07619999999999)
 #define DPULLEY	(0.034924999999999998)
-#define WIDTH	(0.132334/2) 
+#define WIDTH	(0.132334/2)
+#define MAX_ANG_VEL  (50.0)
 std::string filename;
 
 //---------------------------------------------------------------------------
@@ -72,7 +73,6 @@ private:
     puppeteer_msgs::RobotPose pose;
     bool start_flag;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
-    float offset_x, offset_y, offset_th;
     unsigned int num;
     // Controller gains
     float krho, kbeta, kalpha;
@@ -97,6 +97,9 @@ public:
 	// Define subscriber:
 	sub = n_.subscribe("/robot_pose", 1, &KinematicControl::subscriber_cb, this);
 
+	// Send a start flag:
+	send_start_flag();
+	
 	// set control gain values:
 	krho = 5;
 	kbeta = -1.5;
@@ -122,21 +125,20 @@ public:
 	    {
 		if (start_flag == true)
 		{
+		    ROS_INFO("Beginning movement execution");
+
+		    // set parameters for sending initial pose
+		    srv.request.robot_index = traj->RobotMY;
+		    srv.request.type = 'l';
+		    srv.request.Vleft = traj->vals[0][1];
+		    srv.request.Vright = traj->vals[0][2];
+		    srv.request.Vtop = atan2(traj->vals[1][2]-traj->vals[0][2],
+					     traj->vals[1][1]-traj->vals[0][1]);
+		    srv.request.div = 4;
+
 		    start_flag = false;
 		    base_time = ros::Time::now();
 		    
-		    ROS_INFO("Beginning movement execution");
-		    // get offset values:
-		    offset_x = traj->vals[0][0];
-		    offset_y = traj->vals[0][1];
-		    offset_th = traj->vals[0][2];
-		    // set parameters for start command
-		    srv.request.robot_index = traj->RobotMY;
-		    srv.request.type = 'm';
-		    srv.request.Vleft = 0.0;
-		    srv.request.Vright = 0.0;
-		    srv.request.Vtop = 0.0;
-		    srv.request.div = 0;
 		}
 		else
 		{
@@ -153,6 +155,7 @@ public:
 		    else
 		    {
 			// stop robot!
+			ROS_INFO("Trajectory Finished!");
 			srv.request.robot_index = traj->RobotMY;
 			srv.request.type = 'h';
 			srv.request.Vleft = 0.0;
@@ -227,9 +230,9 @@ public:
 	    // in the serial service
 
 	    // now, we can find the error terms:
-	    actual_x = pose.x_robot+offset_x;
-	    actual_y = pose.y_robot+offset_y;
-	    actual_th = pose.theta+offset_th;
+	    actual_x = pose.x_robot;
+	    actual_y = pose.y_robot;
+	    actual_th = pose.theta;
 	    rho = sqrt(pow((actual_x-desired_x), 2.0)
 		       +pow((actual_y-desired_y),2.0));
 	    alpha = -actual_th+atan2(desired_y-actual_y,
@@ -246,6 +249,13 @@ public:
 	    // Now we can convert those to angular wheel velocities:
 	    vright = (v+omega*WIDTH)/DWHEEL/2.0;
 	    vleft = (v-omega*WIDTH)/DWHEEL/2.0;
+	    while (vright > MAX_ANG_VEL || vleft > MAX_ANG_VEL)
+	    {
+		vright *= 0.9;
+	        vleft *= 0.9; 
+	    }
+
+	    ROS_INFO("Vleft = %f\tVright = %f",vleft,vright);
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
 	    srv.request.type = 'h';
@@ -256,6 +266,37 @@ public:
 
 	    return;
 	}
+
+    void send_start_flag(void)
+	{
+	    // First set the parameters for the service call
+	    srv.request.robot_index = traj->RobotMY;
+	    srv.request.type = 'm';
+	    srv.request.Vleft = 0.0;
+	    srv.request.Vright = 0.0;
+	    srv.request.Vtop = 0.0;
+	    srv.request.div = 0;
+
+	    // send request to service
+	    if(client.call(srv))
+	    {
+		if(srv.response.error == false)
+		    ROS_DEBUG("Send Successful: speed_command\n");
+		else
+		{
+		    ROS_DEBUG("Send Request Denied: speed_command\n");
+		    static bool request_denied_notify = true;
+		    if(request_denied_notify)
+		    {
+			ROS_INFO("Send Requests Denied: speed_command\n");
+			request_denied_notify = false;
+		    }
+		}
+	    }
+	    else 
+		ROS_ERROR("Failed to call service: speed_command\n");
+	}
+
 
     Trajectory *ReadControls(std::string filename)
 	{
