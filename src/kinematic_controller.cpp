@@ -150,7 +150,7 @@ public:
 		    if (running_time <= traj->vals[num-1][0])
 		    {
 			get_desired_pose(running_time);
-			get_control_values();
+			get_control_values(pose);
 		    }
 		    else
 		    {
@@ -164,6 +164,7 @@ public:
 			srv.request.div = 3;
 			// set operating_condition to stop
 			ros::param::set("operating_condition", 3);
+			start_flag = true;
 		    }
 		}
 		
@@ -218,10 +219,11 @@ public:
 		desired_th += 2.0*M_PI;
 	    while (desired_th > M_PI)
 		desired_th -= 2.0*M_PI;
+	    ROS_INFO("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
 	    return;
 	}
 
-    void get_control_values(void)
+    void get_control_values(const puppeteer_msgs::RobotPose &pose)
 	{
 	    float alpha, beta, rho, v, omega, vleft, vright;
 	    // This function takes no arguments, it just calculates
@@ -233,6 +235,7 @@ public:
 	    actual_x = pose.x_robot;
 	    actual_y = pose.y_robot;
 	    actual_th = pose.theta;
+	    ROS_INFO("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
 	    rho = sqrt(pow((actual_x-desired_x), 2.0)
 		       +pow((actual_y-desired_y),2.0));
 	    alpha = -actual_th+atan2(desired_y-actual_y,
