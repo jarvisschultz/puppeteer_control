@@ -49,6 +49,11 @@
 #define MAX_ANG_VEL  (50.0)
 std::string filename;
 
+template <typename T> int sgn(T val)
+{
+    return (val > T(0)) - (val < T(0));
+}       
+
 //---------------------------------------------------------------------------
 // Class Definitions
 //---------------------------------------------------------------------------
@@ -61,7 +66,7 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][3];
+	float vals[][5]; // unknown length; x,y,z,wd,thd 
     } Trajectory;       
 
     int operating_condition;
@@ -73,9 +78,11 @@ private:
     puppeteer_msgs::RobotPose pose;
     bool start_flag;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
+    float vd, wd;
     unsigned int num;
     // Controller gains
-    float krho, kbeta, kalpha;
+    float k1, k2, k3;
+    float zeta, b;
 
 public:
     KinematicControl() {
@@ -101,11 +108,8 @@ public:
 	send_start_flag();
 	
 	// set control gain values:
-	krho = 5;
-	kbeta = -1.5;
-	kalpha = 20;
-	if (krho < 0 || kbeta > 0 || kalpha-krho < 0)
-	    ROS_WARN("Controller gains are not stable!!!");
+	zeta = 0.7;
+	b = 10;
     }
 
     // This gets called every time the estimator publishes a new robot
@@ -215,40 +219,67 @@ public:
 	    // the next point
 	    desired_th = atan2(traj->vals[index][2]-desired_y,
 			       traj->vals[index][1]-desired_x);
-	    while (desired_th < -M_PI)
+	    while (desired_th <= -M_PI)
 		desired_th += 2.0*M_PI;
 	    while (desired_th > M_PI)
 		desired_th -= 2.0*M_PI;
+
+	    // Now, we can interpolate the feedforward terms:
+	    vd = (traj->vals[index-1][3])+
+		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
+	    wd = (traj->vals[index-1][4])+
+		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
+		
 	    ROS_INFO("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
 	    return;
 	}
 
     void get_control_values(const puppeteer_msgs::RobotPose &pose)
 	{
-	    float alpha, beta, rho, v, omega, vleft, vright;
+	    float v, omega, vleft, vright, dtheta;
+	    float comps[3];
 	    // This function takes no arguments, it just calculates
 	    // the wheel velocities we should send as dictated by the
 	    // closed loop controller.  It also sets those parameters
 	    // in the serial service
 
-	    // now, we can find the error terms:
+	    // find the robot returned values:
 	    actual_x = pose.x_robot;
 	    actual_y = pose.y_robot;
 	    actual_th = pose.theta;
 	    ROS_INFO("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
-	    rho = sqrt(pow((actual_x-desired_x), 2.0)
-		       +pow((actual_y-desired_y),2.0));
-	    alpha = -actual_th+atan2(desired_y-actual_y,
-				     desired_x-actual_x);
-	    while (alpha < -M_PI)
-		alpha += 2.0*M_PI;
-	    while (alpha > M_PI)
-		alpha -= 2.0*M_PI;
-	    beta = -(actual_th)-alpha;
-	    // Now we can convert those to translational and
-	    // angular body velocities:
-	    v = krho*rho;
-	    omega = kalpha*alpha+kbeta*beta;
+
+	    // Now calculate the gain values:
+	    k1 = 2*zeta*sqrt(pow(wd,2)+b*pow(vd,2));
+	    k2 = b*abs(vd);
+	    k3 = k1;
+
+	    // calc control values:
+	    v = vd*cos(desired_th-actual_th) +
+		k1*(cos(actual_th)*(desired_x-actual_x)+
+		    sin(actual_th)*(desired_y-actual_y));
+	    comps[0] = desired_th-actual_th-2.0*M_PI;
+	    comps[1] = desired_th-actual_th+2.0*M_PI;
+	    comps[2] = desired_th-actual_th;
+	    if (abs(comps[0]) < abs(comps[1]))
+	    {
+		if (abs(comps[0]) < abs(comps[2]))
+		    dtheta = comps[0];
+		else
+		    dtheta = comps[2];
+	    }
+	    else
+	    {
+		if (abs(comps[1]) < abs(comps[2]))
+		    dtheta = comps[1];
+		else
+		    dtheta = comps[2];
+	    }
+	    omega = wd + k2*((float) sgn(vd))*
+		(cos(actual_th)*(desired_y-actual_y)-
+		 sin(actual_th)*(desired_x-actual_x))
+		+ k3*dtheta;
+
 	    // Now we can convert those to angular wheel velocities:
 	    vright = (v+omega*WIDTH)/DWHEEL/2.0;
 	    vleft = (v-omega*WIDTH)/DWHEEL/2.0;
@@ -304,7 +335,7 @@ public:
     Trajectory *ReadControls(std::string filename)
 	{
 	    unsigned int i,j;
-	    float temp_float;
+	    float temp_float, xd, xdd, yd, ydd, xdp, ydp;
 	    std::string line, temp;
 	    Trajectory *traj;
 	    std::ifstream file;
@@ -333,11 +364,36 @@ public:
 		getline(file, line);
 	    }
 	    file.close();
-
+	    
 	    // Now we can set DT and the robot_index
 	    ros::param::get("/robot_index", traj->RobotMY);
 	    traj->DT = traj->vals[1][0]-traj->vals[0][0];
 	    traj->num = num;
+
+	    // Now let's set the feedforward terms in the vals array:
+	    for (i=0; i<num-2; i++)
+	    {
+		xd = (traj->vals[i+1][1]-traj->vals[i][1])/
+		    (traj->vals[i+1][0]-traj->vals[i][0]);
+		yd = (traj->vals[i+1][2]-traj->vals[i][2])/
+		    (traj->vals[i+1][0]-traj->vals[i][0]);
+		xdp = (traj->vals[i+2][1]-traj->vals[i+1][1])/
+		    (traj->vals[i+2][0]-traj->vals[i+1][0]);
+		ydp = (traj->vals[i+2][2]-traj->vals[i+1][2])/
+		    (traj->vals[i+2][0]-traj->vals[i+1][0]);
+		xdd = (xdp-xd)/(traj->vals[i+1][0]-traj->vals[i][0]);
+		ydd = (ydp-yd)/(traj->vals[i+1][0]-traj->vals[i][0]);
+		// Now we can calculate the angular and translational
+		// velocities of the robot:
+		traj->vals[i][3] = sqrt(pow(xd,2)+pow(yd,2));
+		traj->vals[i][4] = (ydd*xd-xdd*yd)/(pow(xd,2)+pow(yd,2));
+	    }
+	    // Now, let's fill out the last few entries:
+	    traj->vals[num-2][3] = traj->vals[num-3][3];
+	    traj->vals[num-2][4] = traj->vals[num-3][4];
+	    traj->vals[num-1][3] = traj->vals[num-3][3];
+	    traj->vals[num-1][4] = traj->vals[num-3][4];
+	    
 	    return traj;
 	}
 };
@@ -386,7 +442,7 @@ void command_line_parser(int argc, char** argv)
     }
      
     for (index = optind; index < argc; index++)
-    	printf ("Non-option argument %s\n", argv[index]);
+	printf ("Non-option argument %s\n", argv[index]);
     if (pflag != 1)
     {
 	// Then we just use the default path:
@@ -414,26 +470,22 @@ void command_line_parser(int argc, char** argv)
 }
 
 
-    
-
-
-
 //---------------------------------------------------------------------------
 // MAIN
 //---------------------------------------------------------------------------
 
-int main(int argc, char** argv)
-{
-  // startup node
-  ros::init(argc, argv, "kinematic_controller");
-  ros::NodeHandle n;
+    int main(int argc, char** argv)
+	{
+	    // startup node
+	    ros::init(argc, argv, "kinematic_controller");
+	    ros::NodeHandle n;
 
-  command_line_parser(argc, argv);
+	    command_line_parser(argc, argv);
   
-  KinematicControl controller1;
+	    KinematicControl controller1;
 
-  // infinite loop
-  ros::spin();
+	    // infinite loop
+	    ros::spin();
 
-  return 0;
-}
+	    return 0;
+	}
