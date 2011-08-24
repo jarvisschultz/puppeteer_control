@@ -43,10 +43,13 @@
 //---------------------------------------------------------------------------
 // Global Variables
 //---------------------------------------------------------------------------
+// #define DWHEEL	(0.07619999999999)
+// #define DPULLEY	(0.034924999999999998)
+// #define WIDTH	(0.132334/2)
 #define DWHEEL	(0.07619999999999)
 #define DPULLEY	(0.034924999999999998)
-#define WIDTH	(0.132334/2)
-#define MAX_ANG_VEL  (50.0)
+#define WIDTH	(0.1323340)
+#define MAX_ANG_VEL  (60.0)
 std::string filename;
 
 template <typename T> int sgn(T val)
@@ -83,6 +86,7 @@ private:
     // Controller gains
     float k1, k2, k3;
     float zeta, b;
+    std::ofstream tmp_file;
 
 public:
     KinematicControl() {
@@ -110,6 +114,8 @@ public:
 	// set control gain values:
 	zeta = 0.7;
 	b = 10;
+
+	tmp_file.open("temp.txt");
     }
 
     // This gets called every time the estimator publishes a new robot
@@ -229,6 +235,13 @@ public:
 		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
 	    wd = (traj->vals[index-1][4])+
 		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
+
+	    tmp_file << time << ",";
+	    tmp_file << desired_x << ",";
+	    tmp_file << desired_y << ",";
+	    tmp_file << desired_th << ",";
+	    tmp_file << vd << ",";
+	    tmp_file << wd << ",";
 		
 	    ROS_INFO("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
 	    return;
@@ -251,8 +264,11 @@ public:
 
 	    // Now calculate the gain values:
 	    k1 = 2*zeta*sqrt(pow(wd,2)+b*pow(vd,2));
-	    k2 = b*abs(vd);
+	    k2 = b*fabs(vd);
 	    k3 = k1;
+
+	    tmp_file << k1 << ",";
+	    tmp_file << k2 << ",";	    
 
 	    // calc control values:
 	    v = vd*cos(desired_th-actual_th) +
@@ -281,8 +297,14 @@ public:
 		+ k3*dtheta;
 
 	    // Now we can convert those to angular wheel velocities:
-	    vright = (v+omega*WIDTH)/DWHEEL/2.0;
-	    vleft = (v-omega*WIDTH)/DWHEEL/2.0;
+	    // vright = (v+omega*WIDTH)/DWHEEL/2.0;
+	    // vleft = (v-omega*WIDTH)/DWHEEL/2.0;
+	    vright = (2.0*v+omega*WIDTH)/DWHEEL;
+	    vleft = (2.0*v-omega*WIDTH)/DWHEEL;
+	    
+	    tmp_file << vright << ",";
+	    tmp_file << vleft << "\n";	    
+	    
 	    while (vright > MAX_ANG_VEL || vleft > MAX_ANG_VEL)
 	    {
 		vright *= 0.9;
@@ -387,13 +409,14 @@ public:
 		// velocities of the robot:
 		traj->vals[i][3] = sqrt(pow(xd,2)+pow(yd,2));
 		traj->vals[i][4] = (ydd*xd-xdd*yd)/(pow(xd,2)+pow(yd,2));
+
 	    }
 	    // Now, let's fill out the last few entries:
 	    traj->vals[num-2][3] = traj->vals[num-3][3];
 	    traj->vals[num-2][4] = traj->vals[num-3][4];
 	    traj->vals[num-1][3] = traj->vals[num-3][3];
 	    traj->vals[num-1][4] = traj->vals[num-3][4];
-	    
+
 	    return traj;
 	}
 };
