@@ -118,7 +118,7 @@ public:
 	
     // check robot_state_req and act accordingly
     // are we in idle mode?
-    if(operating_condition == 0) {
+    if(operating_condition == 0 || operating_condition == 1) {
       // reset flags
       start_flag = true;
       stop_flag = false;
@@ -126,7 +126,7 @@ public:
     }
   
     // are we in run mode?
-    else if(operating_condition == 1) {
+    else if(operating_condition == 2) {
       if(start_flag == true) {
 	ROS_INFO("Beginning movement execution\n");
 	srv.request.robot_index = robot->RobotMY;
@@ -152,7 +152,7 @@ public:
 	ROS_DEBUG("Calling Service\n");
       }
       else {
-	ros::param::set("operating_condition", 2);  // set state to stop
+	ros::param::set("operating_condition", 3);  // set state to stop
       }
 
       // send request to service
@@ -177,8 +177,8 @@ public:
     }
 	
     // have we gotten a stop request or an emergency stop request?
-    else if(operating_condition == 2 || operating_condition == 3) {
-      if(operating_condition == 3) ROS_WARN("Emergency Stop Detected");
+    else if(operating_condition == 3 || operating_condition == 4) {
+      if(operating_condition == 4) ROS_WARN("Emergency Stop Detected");
 
       srv.request.robot_index = robot->RobotMY;
       srv.request.type = 'q';

@@ -43,9 +43,6 @@
 //---------------------------------------------------------------------------
 // Global Variables
 //---------------------------------------------------------------------------
-// #define DWHEEL	(0.07619999999999)
-// #define DPULLEY	(0.034924999999999998)
-// #define WIDTH	(0.132334/2)
 #define DWHEEL	(0.07619999999999)
 #define DPULLEY	(0.034924999999999998)
 #define WIDTH	(0.1323340)
@@ -126,12 +123,13 @@ public:
 	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
 	    
-	    if (operating_condition != 2)
+	    if (operating_condition == 0 || operating_condition == 1 ||
+		operating_condition == 3)
 	    {
 		start_flag = true;
 		return;
 	    }
-	    else
+	    else if (operating_condition == 2)
 	    {
 		if (start_flag == true)
 		{
@@ -177,45 +175,55 @@ public:
 			start_flag = true;
 		    }
 		}
-		
-		// send request to service
-		if(client.call(srv))
+	    }
+	    else if (operating_condition == 4)
+	    {
+		ROS_WARN("Emergency Stop Detected!");
+		srv.request.robot_index = traj->RobotMY;
+		srv.request.type = 'h';
+		srv.request.Vleft = 0.0;
+		srv.request.Vright = 0.0;
+		srv.request.Vtop = 0.0;
+		srv.request.div = 3;
+		start_flag = true;
+	    }
+	    
+	    // send request to service
+	    if(client.call(srv))
+	    {
+		if(srv.response.error == false)
+		    ROS_DEBUG("Send Successful: speed_command\n");
+		else
 		{
-		    if(srv.response.error == false)
-			ROS_DEBUG("Send Successful: speed_command\n");
-		    else
+		    ROS_DEBUG("Send Request Denied: speed_command\n");
+		    static bool request_denied_notify = true;
+		    if(request_denied_notify)
 		    {
-			ROS_DEBUG("Send Request Denied: speed_command\n");
-			static bool request_denied_notify = true;
-			if(request_denied_notify)
-			{
-			    ROS_INFO("Send Requests Denied: speed_command\n");
-			    request_denied_notify = false;
-			}
+			ROS_INFO("Send Requests Denied: speed_command\n");
+			request_denied_notify = false;
 		    }
 		}
-		else 
-		    ROS_ERROR("Failed to call service: speed_command\n");
-      
 	    }
+	    else 
+		ROS_ERROR("Failed to call service: speed_command\n");
 	}
 
     void get_desired_pose(float time)
-	{
-	    // This function reads through the trajectory array and
-	    // interpolates the desired pose of the robot at the
-	    // current operating time
+    {
+	// This function reads through the trajectory array and
+	// interpolates the desired pose of the robot at the
+	// current operating time
 
-	    // first we iterate through the array to find the right
-	    // time entry
-	    unsigned int index;
-	    float mult;
-	    for (index=0; index<num; index++)
-	    {
-		if (traj->vals[index][0] > time)
-		    break;
-	    }
-	    mult = (time-traj->vals[index-1][0])/traj->DT;
+	// first we iterate through the array to find the right
+	// time entry
+	unsigned int index;
+	float mult;
+	for (index=0; index<num; index++)
+	{
+	    if (traj->vals[index][0] > time)
+		break;
+	}
+	mult = (time-traj->vals[index-1][0])/traj->DT;
 	    desired_x = (traj->vals[index-1][1]) +
 		mult*(traj->vals[index][1]-traj->vals[index-1][1]);
 	    desired_y = (traj->vals[index-1][2]) +
