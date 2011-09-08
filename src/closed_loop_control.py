@@ -59,8 +59,10 @@ t = rospy.Time
 ## Publisher names:
 actual_state_pub = rospy.Publisher('transformed_state', pmsg.State)
 desired_state_pub = rospy.Publisher('desired_state', pmsg.State)
+robot_commands_pub = rospy.Publisher('robot_commands', pmsg.RobotCommands)
 actual_state = pmsg.State()
 desired_state = pmsg.State()
+robot_commands = pmsg.RobotCommands()
 
 ## Service names:
 serial_client = rospy.ServiceProxy('speed_command', psrv.speed_command, headers=None)
@@ -353,7 +355,7 @@ def estimator_callback(data):
 
     ## Everytime this loop is done we call the service:
     try:
-        ## First, let't pause for a second to space out the
+        ## First, let's pause for a second to space out the
         ## commands sent to the robot
         rospy.sleep(0.05*1/30.)
         resp = serial_client(robot_index, ord(msgtype), Vleft, Vright, Vtop, div)
@@ -469,7 +471,6 @@ def calculate_controls(uk,xk,Kk):
     global u_current, u_last, v_current, v_last, t_step, Dwheel, Dpulley
     global div, Vleft, Vright, Vtop, msgtype
     ## First assemble the actual state into an array:
-     
     d = actual_state
     xactual = np.array([d.xm,d.ym,d.xc,d.r,d.xm_dot,d.ym_dot,d.xc_dot,d.r_dot])
     ## Now transform the feedback gain into a matrix:
@@ -478,15 +479,22 @@ def calculate_controls(uk,xk,Kk):
     u_last = u_current
     u_current = np.array(uk)+np.dot(Kmat,xactual-xk)
     ## Now, we need to integrate this to get the type of values we want 
-    ## v_last = v_current
+    v_last = v_current
     v_current = np.array((v_last+(u_last+u_current)/2.0*t_step)).tolist()
-    v_current = [xk[6], xk[7]]
     ## Transform linear velocities to angular velocities:
     msgtype = 'h'
     Vleft = v_current[0]/(Dwheel/2.0)
     Vright = v_current[0]/(Dwheel/2.0)
     Vtop = v_current[1]/(Dpulley/2.0)
     div = 3
+
+    print "Vwheels = ",Vleft,"\tVtop = ",Vtop
+    ## Let's now publish the data:
+    robot_commands.v1 = v_current[0]
+    robot_commands.v2 = v_current[1]
+    robot_commands.u1 = u_current[0]
+    robot_commands.u2 = u_current[1]
+    robot_commands_pub.publish(robot_commands)
     return
 
 def main():
@@ -495,6 +503,10 @@ def main():
     ros.spin()
     """
     global robot_index
+    
+    ## Set parameters for robot:
+    rospy.set_param("/robot_index", robot_index)
+
     ## The first thing that we do is call the text reading function:
     DIR = os.popen("rospack find puppeteer_control").read()
     DIR = DIR[0:-1]+"/data/"
@@ -511,9 +523,6 @@ def main():
     try:
         ros_setup()
     except rospy.ROSInterruptException: pass
-
-    ## Set parameters for robot:
-    rospy.set_param("/robot_index", robot_index)
 
 if __name__=='__main__':
     main()
