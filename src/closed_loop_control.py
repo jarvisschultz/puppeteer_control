@@ -479,8 +479,9 @@ def calculate_controls(uk,xk,Kk):
     u_last = u_current
     u_current = np.array(uk)+np.dot(Kmat,xactual-xk)
     ## Now, we need to integrate this to get the type of values we want 
-    v_last = v_current
-    v_current = np.array((v_last+(u_last+u_current)/2.0*t_step)).tolist()
+    ## v_last = v_current
+    ## v_current = np.array((v_last+(u_last+u_current)/2.0*t_step)).tolist()
+    v_current = [xk[6], xk[7]]
     ## Transform linear velocities to angular velocities:
     msgtype = 'h'
     Vleft = v_current[0]/(Dwheel/2.0)
