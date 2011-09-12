@@ -46,7 +46,8 @@
 #define DWHEEL	(0.07619999999999)
 #define DPULLEY	(0.034924999999999998)
 #define WIDTH	(0.1323340)
-#define MAX_ANG_VEL  (60.0)
+#define MAX_TRANS_VEL  (2.25)
+#define MAX_ANG_VEL (30.0)
 std::string filename;
 
 template <typename T> int sgn(T val)
@@ -83,7 +84,6 @@ private:
     // Controller gains
     float k1, k2, k3;
     float zeta, b;
-    std::ofstream tmp_file;
 
 public:
     KinematicControl() {
@@ -111,8 +111,6 @@ public:
 	// set control gain values:
 	zeta = 0.7;
 	b = 10;
-
-	tmp_file.open("temp.txt");
     }
 
     // This gets called every time the estimator publishes a new robot
@@ -244,20 +242,14 @@ public:
 	    wd = (traj->vals[index-1][4])+
 		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
 
-	    tmp_file << time << ",";
-	    tmp_file << desired_x << ",";
-	    tmp_file << desired_y << ",";
-	    tmp_file << desired_th << ",";
-	    tmp_file << vd << ",";
-	    tmp_file << wd << ",";
-		
-	    ROS_INFO("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
+
+	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
 	    return;
 	}
 
     void get_control_values(const puppeteer_msgs::RobotPose &pose)
 	{
-	    float v, omega, vleft, vright, dtheta;
+	    float v, omega, dtheta;
 	    float comps[3];
 	    // This function takes no arguments, it just calculates
 	    // the wheel velocities we should send as dictated by the
@@ -268,15 +260,12 @@ public:
 	    actual_x = pose.x_robot;
 	    actual_y = pose.y_robot;
 	    actual_th = pose.theta;
-	    ROS_INFO("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
+	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
 
 	    // Now calculate the gain values:
 	    k1 = 2*zeta*sqrt(pow(wd,2)+b*pow(vd,2));
 	    k2 = b*fabs(vd);
 	    k3 = k1;
-
-	    tmp_file << k1 << ",";
-	    tmp_file << k2 << ",";	    
 
 	    // calc control values:
 	    v = vd*cos(desired_th-actual_th) +
@@ -304,29 +293,19 @@ public:
 		 sin(actual_th)*(desired_x-actual_x))
 		+ k3*dtheta;
 
-	    // Now we can convert those to angular wheel velocities:
-	    // vright = (v+omega*WIDTH)/DWHEEL/2.0;
-	    // vleft = (v-omega*WIDTH)/DWHEEL/2.0;
-	    vright = (2.0*v+omega*WIDTH)/DWHEEL;
-	    vleft = (2.0*v-omega*WIDTH)/DWHEEL;
-	    
-	    tmp_file << vright << ",";
-	    tmp_file << vleft << "\n";	    
-	    
-	    while (vright > MAX_ANG_VEL || vleft > MAX_ANG_VEL)
+	    while (v > MAX_TRANS_VEL || omega > MAX_ANG_VEL)
 	    {
-		vright *= 0.9;
-	        vleft *= 0.9; 
+		v *= 0.9;
+	        omega *= 0.9; 
 	    }
 
-	    ROS_INFO("Vleft = %f\tVright = %f",vleft,vright);
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
-	    srv.request.type = 'h';
-	    srv.request.Vleft = vleft;
-	    srv.request.Vright = vright;
+	    srv.request.type = 'd';
+	    srv.request.Vleft = v;
+	    srv.request.Vright = omega;
 	    srv.request.Vtop = 0.0;
-	    srv.request.div = 3;
+	    srv.request.div = 4;
 
 	    return;
 	}
