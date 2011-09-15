@@ -67,7 +67,8 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][5]; // unknown length; x,y,z,wd,thd 
+	float vals[][5]; // unknown length;
+			 // t,x,y,velocity_desired,angvel_desired
     } Trajectory;       
 
     int operating_condition;
@@ -403,6 +404,11 @@ public:
 	    traj->vals[num-2][4] = traj->vals[num-3][4];
 	    traj->vals[num-1][3] = traj->vals[num-3][3];
 	    traj->vals[num-1][4] = traj->vals[num-3][4];
+
+	    // let's set some parameters for the initial pose of the robot:
+	    ros::param::set("/robot_x0", traj->vals[0][1]);
+	    ros::param::set("/robot_z0", traj->vals[0][2]);
+	    ros::param::set("/robot_y0", 2.0);
 
 	    return traj;
 	}
