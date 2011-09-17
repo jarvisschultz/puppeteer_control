@@ -67,8 +67,8 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][5]; // unknown length;
-			 // t,x,y,velocity_desired,angvel_desired
+	float vals[][6]; // unknown length;
+			 // t,x,y,velocity_desired,angvel_desired,rdot
     } Trajectory;       
 
     int operating_condition;
@@ -80,7 +80,7 @@ private:
     puppeteer_msgs::RobotPose pose;
     bool start_flag;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
-    float vd, wd;
+    float vd, wd, rdotd;
     unsigned int num;
     // Controller gains
     float k1, k2, k3;
@@ -88,6 +88,7 @@ private:
 
 public:
     KinematicControl() {
+	ROS_DEBUG("Instantiating KinematicControl Class");
 	// Initialize necessary variables:
 	if(ros::param::has("operating_condition"))
 	    // set operating_condition to idle so the robot doesn't drive
@@ -118,6 +119,7 @@ public:
     // pose
     void subscriber_cb(const puppeteer_msgs::RobotPose &pose)
 	{
+	    ROS_DEBUG("Subscriber callback triggered");
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
@@ -145,6 +147,7 @@ public:
 
 		    start_flag = false;
 		    base_time = ros::Time::now();
+		    ROS_DEBUG("Setting Base Time to %f",base_time.toSec());
 		    
 		}
 		else
@@ -153,6 +156,8 @@ public:
 		    // let's first get the expected pose at the given time:
 		    running_time = ((ros::Time::now()).toSec()-
 				    base_time.toSec());
+		    ROS_DEBUG("Running time is %f", running_time);
+		    ROS_DEBUG("Final time is %f", traj->vals[num-1][0]);
 		    // check that running_time is less than the final time:
 		    if (running_time <= traj->vals[num-1][0])
 		    {
@@ -209,6 +214,7 @@ public:
 
     void get_desired_pose(float time)
     {
+	ROS_DEBUG("Interpolating desired pose");
 	// This function reads through the trajectory array and
 	// interpolates the desired pose of the robot at the
 	// current operating time
@@ -242,14 +248,19 @@ public:
 		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
 	    wd = (traj->vals[index-1][4])+
 		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
+	    rdotd = (traj->vals[index-1][5])+
+		mult*(traj->vals[index][5]-traj->vals[index-1][5]);
 
-
+	    rdotd = 0.0;
+	    ROS_DEBUG("Desired values at time t = %f", time);
 	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
+	    ROS_DEBUG("vd = %f\twd = %f\trdotd = %f\t",vd, wd, rdotd);
 	    return;
 	}
 
     void get_control_values(const puppeteer_msgs::RobotPose &pose)
 	{
+	    ROS_DEBUG("Calculating the control values");
 	    float v, omega, dtheta;
 	    float comps[3];
 	    // This function takes no arguments, it just calculates
@@ -299,13 +310,14 @@ public:
 		v *= 0.9;
 	        omega *= 0.9; 
 	    }
+	    ROS_DEBUG("Commands: v = %f\tomega = %f",v,omega);
 
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
 	    srv.request.type = 'd';
 	    srv.request.Vleft = v;
 	    srv.request.Vright = omega;
-	    srv.request.Vtop = 0.0;
+	    srv.request.Vtop = rdotd;
 	    srv.request.div = 4;
 
 	    return;
@@ -313,6 +325,7 @@ public:
 
     void send_start_flag(void)
 	{
+	    ROS_DEBUG("Sending start flag");
 	    // First set the parameters for the service call
 	    srv.request.robot_index = traj->RobotMY;
 	    srv.request.type = 'm';
@@ -372,6 +385,13 @@ public:
 		    traj->vals[i][j] = temp_float;
 		}
 		getline(file, line);
+		std::stringstream ss(line);
+		ss >> temp_float;
+		// fill out rdot
+		traj->vals[i][5] = temp_float;
+		// printf("t = %f\tx = %f\ty = %f\trdot = %f\n",
+		//        traj->vals[i][0], traj->vals[i][1],
+		//        traj->vals[i][2], traj->vals[i][5]);
 	    }
 	    file.close();
 	    
