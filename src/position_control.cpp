@@ -158,7 +158,7 @@ public:
 		    if (running_time <= traj->vals[num-1][0])
 		    {
 			get_desired_pose(running_time);
-			get_control_values(pose);
+			get_control_values(pose, running_time);
 		    }
 		    else
 		    {
@@ -187,43 +187,49 @@ public:
 		srv.request.div = 3;
 		start_flag = true;
 	    }
-	    
-	    // send request to service
-	    if(client.call(srv))
+
+	    static int i = 0;
+	    if (i < 4)
 	    {
-		if(srv.response.error == false)
-		    ROS_DEBUG("Send Successful: speed_command\n");
-		else
+		// send request to service
+		if(client.call(srv))
 		{
-		    ROS_DEBUG("Send Request Denied: speed_command\n");
-		    static bool request_denied_notify = true;
-		    if(request_denied_notify)
+		    if(srv.response.error == false)
+			ROS_DEBUG("Send Successful: speed_command\n");
+		    else
 		    {
-			ROS_INFO("Send Requests Denied: speed_command\n");
-			request_denied_notify = false;
+			ROS_DEBUG("Send Request Denied: speed_command\n");
+			static bool request_denied_notify = true;
+			if(request_denied_notify)
+			{
+			    ROS_INFO("Send Requests Denied: speed_command\n");
+			    request_denied_notify = false;
+			}
 		    }
 		}
+		else 
+		    ROS_ERROR("Failed to call service: speed_command\n");
 	    }
-	    else 
-		ROS_ERROR("Failed to call service: speed_command\n");
+	    else
+		assert(0);
 	}
 
     void get_desired_pose(float time)
-    {
-	// This function reads through the trajectory array and
-	// interpolates the desired pose of the robot at the
-	// current operating time
-
-	// first we iterate through the array to find the right
-	// time entry
-	unsigned int index;
-	float mult;
-	for (index=0; index<num; index++)
 	{
-	    if (traj->vals[index][0] > time)
-		break;
-	}
-	mult = (time-traj->vals[index-1][0])/traj->DT;
+	    // This function reads through the trajectory array and
+	    // interpolates the desired pose of the robot at the
+	    // current operating time
+
+	    // first we iterate through the array to find the right
+	    // time entry
+	    unsigned int index;
+	    float mult;
+	    for (index=0; index<num; index++)
+	    {
+		if (traj->vals[index][0] > time)
+		    break;
+	    }
+	    mult = (time-traj->vals[index-1][0])/traj->DT;
 	    desired_x = (traj->vals[index-1][1]) +
 		mult*(traj->vals[index][1]-traj->vals[index-1][1]);
 	    desired_y = (traj->vals[index-1][2]) +
@@ -255,7 +261,7 @@ public:
 	    return;
 	}
 
-    void get_control_values(const puppeteer_msgs::RobotPose &pose)
+    void get_control_values(const puppeteer_msgs::RobotPose &pose, const double time)
 	{
 	    float v, omega, vleft, vright, dtheta;
 	    float comps[3];
@@ -322,12 +328,16 @@ public:
 	    ROS_INFO("Vleft = %f\tVright = %f",vleft,vright);
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
-	    srv.request.type = 'h';
-	    srv.request.Vleft = vleft;
-	    srv.request.Vright = vright;
-	    srv.request.Vtop = 0.0;
-	    srv.request.div = 3;
-	    	    
+	    // srv.request.type = 'h';
+	    // srv.request.Vleft = vleft;
+	    // srv.request.Vright = vright;
+	    // srv.request.Vtop = 0.0;
+	    // srv.request.div = 3;
+	    srv.request.type = 'k';
+	    srv.request.Vleft = time;
+	    srv.request.Vright = desired_x;
+	    srv.request.Vtop = desired_y;
+	    srv.request.div = 4;
 	    return;
 	}
 
