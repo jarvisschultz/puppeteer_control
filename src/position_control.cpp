@@ -184,27 +184,28 @@ public:
 		srv.request.Vtop = 0.0;
 		srv.request.div = 3;
 		start_flag = true;
+		ros::param::set("operating_condition", 0);
 	    }
 
 	    ROS_DEBUG("Calling service");
 	    // send request to service
 	    if(client.call(srv))
 	    {
-		if(srv.response.error == false)
-		    ROS_DEBUG("Send Successful: speed_command\n");
-		else
-		{
-		    ROS_DEBUG("Send Request Denied: speed_command\n");
-		    static bool request_denied_notify = true;
-		    if(request_denied_notify)
-		    {
-			ROS_INFO("Send Requests Denied: speed_command\n");
-			request_denied_notify = false;
-		    }
-		}
+	    	if(srv.response.error == false)
+	    	    ROS_DEBUG("Send Successful: speed_command\n");
+	    	else
+	    	{
+	    	    ROS_DEBUG("Send Request Denied: speed_command\n");
+	    	    static bool request_denied_notify = true;
+	    	    if(request_denied_notify)
+	    	    {
+	    		ROS_INFO("Send Requests Denied: speed_command\n");
+	    		request_denied_notify = false;
+	    	    }
+	    	}
 	    }
 	    else 
-		ROS_ERROR("Failed to call service: speed_command\n");
+	    	ROS_ERROR("Failed to call service: speed_command\n");
 	}
 
     void get_desired_pose(float time)
@@ -240,6 +241,13 @@ public:
 	    ROS_INFO("Time = %f", time);
 	    ROS_INFO("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
 
+	    float vd = (traj->vals[index-1][3])+
+		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
+	    float wd = (traj->vals[index-1][4])+
+		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
+
+	    ROS_INFO("Vd = %f\tWd = %f\t",vd,wd);
+
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
 	    srv.request.type = 'k';
@@ -264,21 +272,21 @@ public:
 	    // send request to service
 	    if(client.call(srv))
 	    {
-		if(srv.response.error == false)
-		    ROS_DEBUG("Send Successful: speed_command\n");
-		else
-		{
-		    ROS_DEBUG("Send Request Denied: speed_command\n");
-		    static bool request_denied_notify = true;
-		    if(request_denied_notify)
-		    {
-			ROS_INFO("Send Requests Denied: speed_command\n");
-			request_denied_notify = false;
-		    }
-		}
+	    	if(srv.response.error == false)
+	    	    ROS_DEBUG("Send Successful: speed_command\n");
+	    	else
+	    	{
+	    	    ROS_DEBUG("Send Request Denied: speed_command\n");
+	    	    static bool request_denied_notify = true;
+	    	    if(request_denied_notify)
+	    	    {
+	    		ROS_INFO("Send Requests Denied: speed_command\n");
+	    		request_denied_notify = false;
+	    	    }
+	    	}
 	    }
 	    else 
-		ROS_ERROR("Failed to call service: speed_command\n");
+	    	ROS_ERROR("Failed to call service: speed_command\n");
 	}
 
 
