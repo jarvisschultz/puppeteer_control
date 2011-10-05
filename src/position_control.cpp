@@ -20,7 +20,7 @@
 #include <ros/package.h>
 
 #include <puppeteer_msgs/speed_command.h>
-#include <puppeteer_msgs/RobotPose.h>
+#include <puppeteer_msgs/long_command.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,19 +66,21 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][5]; // unknown length; x,y,z,wd,thd 
+	float vals[][7]; // unknown length; t,x,y,Vd,Wd,hleft,hright
     } Trajectory;       
 
     int operating_condition;
     Trajectory *traj;
     ros::NodeHandle n_;
-    ros::ServiceClient client;
+    ros::ServiceClient client, client2;
     // ros::Subscriber sub;
     ros::Timer timer;
     puppeteer_msgs::speed_command srv;
-    puppeteer_msgs::RobotPose pose;
+    puppeteer_msgs::long_command srv2;
+    // puppeteer_msgs::RobotPose pose;
     bool start_flag;
     float desired_x, desired_y, desired_th;
+    float desired_hl, desired_hr;
     unsigned int num;
     
 public:
@@ -98,6 +100,7 @@ public:
 
 	// Define service client:
 	client = n_.serviceClient<puppeteer_msgs::speed_command>("speed_command");
+	client2 = n_.serviceClient<puppeteer_msgs::long_command>("long_command");
 	// Define subscriber:
 	// sub = n_.subscribe("/robot_pose", 1, &KinematicControl::subscriber_cb, this);
 	// Define timer:
@@ -112,6 +115,7 @@ public:
     // pose
     void subscriber_cb(const ros::TimerEvent& e)
 	{
+	    static bool long_flag = false;
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
@@ -127,36 +131,51 @@ public:
 	    }
 	    else if (operating_condition == 2)
 	    {
-		ROS_DEBUG("Running Condition");
+		ROS_DEBUG("A Running Condition");
 		if (start_flag == true)
 		{
 		    ROS_INFO("Beginning movement execution");
 
 		    // set parameters for sending initial pose
-		    srv.request.robot_index = traj->RobotMY;
-		    srv.request.type = 'l';
-		    srv.request.Vleft = traj->vals[0][1];
-		    srv.request.Vright = traj->vals[0][2];
-		    srv.request.Vtop = atan2(traj->vals[1][2]-traj->vals[0][2],
-					     traj->vals[1][1]-traj->vals[0][1]);
-		    srv.request.div = 4;
+		    // srv.request.robot_index = traj->RobotMY;
+		    // srv.request.type = 'l';
+		    // srv.request.Vleft = traj->vals[0][1];
+		    // srv.request.Vright = traj->vals[0][2];
+		    // srv.request.Vtop = atan2(traj->vals[1][2]-traj->vals[0][2],
+		    // 			     traj->vals[1][1]-traj->vals[0][1]);
+		    // srv.request.div = 4;
+
+		    srv2.request.robot_index = traj->RobotMY;
+		    srv2.request.type = 'a';
+		    srv2.request.num1 = traj->vals[0][1];
+		    srv2.request.num2 = traj->vals[0][2];
+		    srv2.request.num3 = atan2(traj->vals[1][2]-traj->vals[0][2],
+		    			     traj->vals[1][1]-traj->vals[0][1]);
+		    srv2.request.num4 = traj->vals[0][5];
+		    srv2.request.num5 = traj->vals[0][6];
+		    srv2.request.div = 4;
+		    long_flag = true;
 
 		    start_flag = false;
 		    base_time = ros::Time::now();
+		    // ROS_INFO("Base time = %f",base_time.toSec());
 		    
 		}
 		else
 		{
 		    ROS_DEBUG("Getting values to send");
-		    // we will run the regular control loop
+ 		    // we will run the regular control loop
 		    // let's first get the expected pose at the given time:
 		    running_time = ((ros::Time::now()).toSec()-
 				    base_time.toSec());
+		    // ROS_INFO("Running time = %f", running_time);
+		    // ROS_INFO("Final time = %f\t at index = %f",traj->vals[num-1][0]);
 		    // check that running_time is less than the final time:
 		    if (running_time <= traj->vals[num-1][0])
 		    {
 			ROS_DEBUG("Getting desired pose and control values");
 			get_desired_pose(running_time);
+			long_flag = true;
 		    }
 		    else
 		    {
@@ -168,6 +187,7 @@ public:
 			srv.request.Vright = 0.0;
 			srv.request.Vtop = 0.0;
 			srv.request.div = 3;
+			long_flag = false;
 			// set operating_condition to stop
 			ros::param::set("operating_condition", 3);
 			start_flag = true;
@@ -183,29 +203,61 @@ public:
 		srv.request.Vright = 0.0;
 		srv.request.Vtop = 0.0;
 		srv.request.div = 3;
+		long_flag = false;
 		start_flag = true;
 		ros::param::set("operating_condition", 0);
 	    }
 
 	    ROS_DEBUG("Calling service");
 	    // send request to service
-	    if(client.call(srv))
+	    service_call(long_flag);	    
+
+	}
+
+    void service_call(bool flag)
+	{
+	    if(flag)
 	    {
-	    	if(srv.response.error == false)
-	    	    ROS_DEBUG("Send Successful: speed_command\n");
-	    	else
-	    	{
-	    	    ROS_DEBUG("Send Request Denied: speed_command\n");
-	    	    static bool request_denied_notify = true;
-	    	    if(request_denied_notify)
-	    	    {
-	    		ROS_INFO("Send Requests Denied: speed_command\n");
-	    		request_denied_notify = false;
-	    	    }
-	    	}
+		if(client2.call(srv2))
+		{
+		    if(srv2.response.error == false)
+			ROS_DEBUG("Send Successful: long_command");
+		    else
+		    {
+			ROS_DEBUG("Send Request Denied: long_command");
+			static bool request_denied_notify = true;
+			if(request_denied_notify)
+			{
+			    ROS_INFO("Send Requests Denied: long_command");
+			    request_denied_notify = false;
+			}
+		    }
+		}
+		else 
+		    ROS_ERROR("Failed to call service: long_command\n");
 	    }
-	    else 
-	    	ROS_ERROR("Failed to call service: speed_command\n");
+	    
+	    else
+	    {
+		if(client.call(srv))
+		{
+		    if(srv.response.error == false)
+			ROS_DEBUG("Send Successful: speed_command");
+		    else
+		    {
+			ROS_DEBUG("Send Request Denied: speed_command");
+			static bool request_denied_notify = true;
+			if(request_denied_notify)
+			{
+			    ROS_INFO("Send Requests Denied: speed_command");
+			    request_denied_notify = false;
+			}
+		    }
+		}
+		else 
+		    ROS_ERROR("Failed to call service: speed_command\n");
+	    }
+	    return;
 	}
 
     void get_desired_pose(float time)
@@ -228,33 +280,31 @@ public:
 		mult*(traj->vals[index][1]-traj->vals[index-1][1]);
 	    desired_y = (traj->vals[index-1][2]) +
 		mult*(traj->vals[index][2]-traj->vals[index-1][2]);
-	    // now, let's estimate the desired orientation to do this
-	    // we just draw a straight line from the current point to
-	    // the next point
-	    desired_th = atan2(traj->vals[index][2]-desired_y,
-			       traj->vals[index][1]-desired_x);
-	    while (desired_th <= -M_PI)
-		desired_th += 2.0*M_PI;
-	    while (desired_th > M_PI)
-		desired_th -= 2.0*M_PI;
-
+	    desired_hl = (traj->vals[index-1][5]) +
+		mult*(traj->vals[index][5]-traj->vals[index-1][5]);
+	    desired_hr = (traj->vals[index-1][6]) +
+		mult*(traj->vals[index][6]-traj->vals[index-1][6]);
+	    
 	    ROS_INFO("Time = %f", time);
-	    ROS_INFO("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
-
-	    float vd = (traj->vals[index-1][3])+
-		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
-	    float wd = (traj->vals[index-1][4])+
-		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
-
-	    ROS_INFO("Vd = %f\tWd = %f\t",vd,wd);
+	    ROS_INFO("Xd = %f\tYd = %f\tHld = %f\tHrd = %f\t",
+		     desired_x, desired_y, desired_hl, desired_hr);
 
 	    // Set service parameters:
-	    srv.request.robot_index = traj->RobotMY;
-	    srv.request.type = 'k';
-	    srv.request.Vleft = time;
-	    srv.request.Vright = desired_x;
-	    srv.request.Vtop = desired_y;
-	    srv.request.div = 4;
+	    // srv.request.robot_index = traj->RobotMY;
+	    // srv.request.type = 'k';
+	    // srv.request.Vleft = time;
+	    // srv.request.Vright = desired_x;
+	    // srv.request.Vtop = desired_y;
+	    // srv.request.div = 4;
+
+	    srv2.request.robot_index = traj->RobotMY;
+	    srv2.request.type = 't';
+	    srv2.request.num1 = time;
+	    srv2.request.num2 = desired_x;
+	    srv2.request.num3 = desired_y;
+	    srv2.request.num4 = desired_hl;
+	    srv2.request.num5 = desired_hr;
+	    srv2.request.div = 4;
 	    
 	    return;
 	}
@@ -312,14 +362,30 @@ public:
 	    // Now, we can start reading in the important file stuff:
 	    for (i=0; i<num; i++)
 	    {
+		// read in time, x, y
 		for (j=0; j<3; j++)
 		{		
 		    getline(file, line, ',');
 		    std::stringstream ss(line);
 		    ss >> temp_float;
 		    traj->vals[i][j] = temp_float;
+		    // printf("%f\t", temp_float);
 		}
+
+		// read in hleft, hright
+		getline(file, line, ',');
+		std::stringstream ss(line);
+		ss >> temp_float;
+		traj->vals[i][5] = temp_float;
+		// printf("%f\t",temp_float);
+
 		getline(file, line);
+		std::stringstream ss2(line);
+		ss2 >> temp_float;
+		traj->vals[i][6] = temp_float;
+		// printf("%f\t",temp_float);
+		
+		// printf("\n");
 	    }
 	    file.close();
 	    

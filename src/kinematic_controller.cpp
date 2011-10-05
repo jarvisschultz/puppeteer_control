@@ -66,7 +66,7 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][5]; // unknown length; x,y,z,wd,thd 
+	float vals[][5]; // unknown length; time, x, y, Vd, Wd 
     } Trajectory;       
 
     int operating_condition;

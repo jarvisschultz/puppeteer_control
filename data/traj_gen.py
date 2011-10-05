@@ -9,7 +9,7 @@ from math import sin, cos, pi
 
 
 tf = 4.0*pi
-dt = 0.033
+dt = 0.01
 plot_flag = True
 
 
@@ -23,6 +23,8 @@ def main(fname):
     xref = 0.5*np.cos(tvec/2.0)
     yref = 0.5*np.sin(tvec/2.0)
     get_curvature(tvec,xref,yref)
+    zref = 0.5*np.sin(2.0*tvec)
+    ## zref = 0.1*tvec
     ## xref = 0.25*np.sin(tvec)
     ## yref = 0.25*np.sin(tvec/2)
     ## xref = 1.0*(tvec)
@@ -31,19 +33,23 @@ def main(fname):
     ## Write out the length of data:
     f.write("num= "+str(len(tvec))+"\n");
     for i in range(len(tvec)):
-        str1 = '{0: f},{1: f},{2: f},{3: f}\n'.format(tvec[i], xref[i], yref[i], 12.0)
+        str1 = '{0: f},{1: f},{2: f},{3: f},{4: f}\n'.format(
+            tvec[i], xref[i], yref[i], zref[i], zref[i])
         f.write(str1);
     f.close()
 
     if plot_flag:
-        generate_plot(xref, yref)
+        generate_plot(xref, yref, zref, tvec)
 
-def generate_plot(xref, yref):
-    mp.plot(xref, yref, '-', lw=2)
+def generate_plot(xref, yref, zref, tref):
+    mp.subplot(211)
+    a = mp.plot(xref, yref, '-', lw=2)
+    mp.axis('equal')
     mp.ylabel('y (m)')
     mp.xlabel('x (m)')
     mp.grid(True)
-    mp.axes().set_aspect('equal','datalim')
+    mp.subplot(212)
+    mp.plot(tref, zref, 'r-', lw = 2)
     mp.show()
 
 def get_curvature(t, x, y):

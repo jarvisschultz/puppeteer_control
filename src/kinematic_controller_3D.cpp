@@ -389,9 +389,6 @@ public:
 		ss >> temp_float;
 		// fill out rdot
 		traj->vals[i][5] = temp_float;
-		// printf("t = %f\tx = %f\ty = %f\trdot = %f\n",
-		//        traj->vals[i][0], traj->vals[i][1],
-		//        traj->vals[i][2], traj->vals[i][5]);
 	    }
 	    file.close();
 	    
