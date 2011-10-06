@@ -66,7 +66,7 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][7]; // unknown length; t,x,y,Vd,Wd,hleft,hright
+	float vals[][8]; // unknown length; t,x,y,Vd,Wd,hleft,hright
     } Trajectory;       
 
     int operating_condition;
@@ -284,8 +284,10 @@ public:
 		mult*(traj->vals[index][5]-traj->vals[index-1][5]);
 	    desired_hr = (traj->vals[index-1][6]) +
 		mult*(traj->vals[index][6]-traj->vals[index-1][6]);
+	    float desired_time = (traj->vals[index-1][7]) +
+		mult*(traj->vals[index][7]-traj->vals[index-1][7]);
 	    
-	    ROS_INFO("Time = %f", time);
+	    ROS_INFO("Time = %f", desired_time);
 	    ROS_INFO("Xd = %f\tYd = %f\tHld = %f\tHrd = %f\t",
 		     desired_x, desired_y, desired_hl, desired_hr);
 
@@ -299,7 +301,7 @@ public:
 
 	    srv2.request.robot_index = traj->RobotMY;
 	    srv2.request.type = 't';
-	    srv2.request.num1 = time;
+	    srv2.request.num1 = desired_time;
 	    srv2.request.num2 = desired_x;
 	    srv2.request.num3 = desired_y;
 	    srv2.request.num4 = desired_hl;
@@ -379,10 +381,17 @@ public:
 		traj->vals[i][5] = temp_float;
 		// printf("%f\t",temp_float);
 
-		getline(file, line);
+		getline(file, line, ',');
 		std::stringstream ss2(line);
 		ss2 >> temp_float;
 		traj->vals[i][6] = temp_float;
+
+		
+		getline(file, line);
+		std::stringstream ss3(line);
+		ss3 >> temp_float;
+		traj->vals[i][7] = temp_float;
+		
 		// printf("%f\t",temp_float);
 		
 		// printf("\n");

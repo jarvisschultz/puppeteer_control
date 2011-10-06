@@ -8,7 +8,7 @@ import pylab as mp
 from math import sin, cos, pi
 
 
-tf = 4.0*pi
+tf = 2.0*pi
 dt = 0.01
 plot_flag = True
 
@@ -18,26 +18,46 @@ def main(fname):
     f = open(fname,'w')
 
     tvec = np.linspace(0.0, tf, int(tf/dt))
+    tref = tvec
 
     ## Define referenc trajectory:    
     xref = 0.5*np.cos(tvec/2.0)
     yref = 0.5*np.sin(tvec/2.0)
-    get_curvature(tvec,xref,yref)
-    zref = 0.5*np.sin(2.0*tvec)
+    zref = 0.1*np.sin(2.0*tvec)
     ## zref = 0.1*tvec
     ## xref = 0.25*np.sin(tvec)
     ## yref = 0.25*np.sin(tvec/2)
     ## xref = 1.0*(tvec)
     ## yref = 0.0*tvec
-    
+
+    mk = len(tvec)
+    tstop = tvec[-1]
+    for i in range(200):
+        xref = np.append(xref,xref[-1])
+        yref = np.append(yref,yref[-1])
+        zref = np.append(zref,zref[-1])
+        tref = np.append(tref,tref[-1])
+        tvec = np.append(tvec,tvec[i]+tstop)
+        
+    tstop = tvec[-1]
+    for i in range(mk-1,-1,-1):
+        xref = np.append(xref, xref[i])
+        yref = np.append(yref, yref[i])
+        zref = np.append(zref, zref[i])
+        tref = np.append(tref, tref[i])
+        tvec = np.append(tvec, tvec[mk-1-i]+tstop)
+        
     ## Write out the length of data:
     f.write("num= "+str(len(tvec))+"\n");
     for i in range(len(tvec)):
-        str1 = '{0: f},{1: f},{2: f},{3: f},{4: f}\n'.format(
-            tvec[i], xref[i], yref[i], zref[i], zref[i])
+        str1 = '{0: f},{1: f},{2: f},{3: f},{4: f},{5: f}\n'.format(
+            tvec[i], xref[i], yref[i], zref[i], zref[i], tref[i])
         f.write(str1);
+
+        
     f.close()
 
+    get_curvature(tvec,xref,yref)
     if plot_flag:
         generate_plot(xref, yref, zref, tvec)
 
