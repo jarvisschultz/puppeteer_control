@@ -286,8 +286,11 @@ public:
 		mult*(traj->vals[index][6]-traj->vals[index-1][6]);
 	    float desired_time = (traj->vals[index-1][7]) +
 		mult*(traj->vals[index][7]-traj->vals[index-1][7]);
+
+	    static float desired_time_last = desired_time;
 	    
-	    ROS_INFO("Time = %f", desired_time);
+	    ROS_INFO("Time = %f\tdt = %f", desired_time,
+		     desired_time-desired_time_last);
 	    ROS_INFO("Xd = %f\tYd = %f\tHld = %f\tHrd = %f\t",
 		     desired_x, desired_y, desired_hl, desired_hr);
 
@@ -301,13 +304,14 @@ public:
 
 	    srv2.request.robot_index = traj->RobotMY;
 	    srv2.request.type = 't';
-	    srv2.request.num1 = desired_time;
+	    srv2.request.num1 = desired_time-desired_time_last;
 	    srv2.request.num2 = desired_x;
 	    srv2.request.num3 = desired_y;
 	    srv2.request.num4 = desired_hl;
 	    srv2.request.num5 = desired_hr;
 	    srv2.request.div = 4;
-	    
+
+	    desired_time_last = desired_time;	    
 	    return;
 	}
 

@@ -14,16 +14,17 @@ plot_flag = True
 
 
 def main(fname):
+    offset = 0.0
     global dt, tf, plot_flag
     f = open(fname,'w')
 
     tvec = np.linspace(0.0, tf, int(tf/dt))
-    tref = tvec
+    tref = tvec+offset
 
     ## Define referenc trajectory:    
     xref = 0.5*np.cos(tvec/2.0)
     yref = 0.5*np.sin(tvec/2.0)
-    zref = 0.1*np.sin(2.0*tvec)
+    zref = 0.5*np.sin(2.0*tvec)
     ## zref = 0.1*tvec
     ## xref = 0.25*np.sin(tvec)
     ## yref = 0.25*np.sin(tvec/2)
@@ -36,16 +37,18 @@ def main(fname):
         xref = np.append(xref,xref[-1])
         yref = np.append(yref,yref[-1])
         zref = np.append(zref,zref[-1])
-        tref = np.append(tref,tref[-1])
-        tvec = np.append(tvec,tvec[i]+tstop)
+        ## tref = np.append(tref,tref[-1])
+        tvec = np.append(tvec, tvec[i]+tstop)
+        tref = np.append(tref, tref[i]+tstop)
         
     tstop = tvec[-1]
     for i in range(mk-1,-1,-1):
         xref = np.append(xref, xref[i])
         yref = np.append(yref, yref[i])
         zref = np.append(zref, zref[i])
-        tref = np.append(tref, tref[i])
+        tref = np.append(tref, tref[i]-offset)
         tvec = np.append(tvec, tvec[mk-1-i]+tstop)
+
         
     ## Write out the length of data:
     f.write("num= "+str(len(tvec))+"\n");
