@@ -21,15 +21,13 @@ def main(fname):
     tvec = np.linspace(0.0, tf, int(tf/dt))
     tref = tvec+offset
 
-    ## Define referenc trajectory:    
-    xref = 0.5*np.cos(tvec/2.0)
-    yref = 0.5*np.sin(tvec/2.0)
-    zref = 0.5*np.sin(2.0*tvec)
-    ## zref = 0.1*tvec
-    ## xref = 0.25*np.sin(tvec)
-    ## yref = 0.25*np.sin(tvec/2)
-    ## xref = 1.0*(tvec)
+    ## Define referenc trajectory:
+    xref = 0.5*np.cos(tvec/2.)
+    yref = 0.5*np.sin(tvec/2.)
+    zref = 0.0*tvec
+    ## xref = 1.5-1.5*np.exp(-tvec)
     ## yref = 0.0*tvec
+    ## zref = 0.0*tvec
 
     mk = len(tvec)
     tstop = tvec[-1]
@@ -66,13 +64,14 @@ def main(fname):
 
 def generate_plot(xref, yref, zref, tref):
     mp.subplot(211)
-    a = mp.plot(xref, yref, '-', lw=2)
+    a = mp.plot(xref, yref, '-')#, lw=2)
+    ## a = mp.plot(tref, xref, '*')
     mp.axis('equal')
     mp.ylabel('y (m)')
     mp.xlabel('x (m)')
     mp.grid(True)
     mp.subplot(212)
-    mp.plot(tref, zref, 'r-', lw = 2)
+    mp.plot(tref, zref, 'r-')#, lw = 2)
     mp.show()
 
 def get_curvature(t, x, y):
@@ -159,3 +158,23 @@ if __name__ == "__main__" :
     main(fname)
 
 
+    ## dxref = 1.5*np.exp(-tvec)
+
+    ## t2 = np.linspace(0.0, tf, int(tf/0.03333))
+    ## x2 = 1.5-1.5*np.exp(-t2)
+    ## dx2 = np.array([0])
+    ## for i in range(1,len(t2)):
+    ##     dx2 = np.append(dx2, (x2[i]-x2[i-1])/(t2[i]-t2[i-1]))
+
+    ## print len(dx2), len(t2)
+
+    ## mp.subplot(211)
+    ## a = mp.plot(tref, xref, '-', lw = 2)
+    ## mp.ylabel('x (m)')
+    ## mp.xlabel('t (m)')
+    ## mp.grid(True)
+
+    ## mp.subplot(212)
+    ## mp.plot(tref, dxref, '-',t2, dx2,'*', lw = 2)
+    ## mp.grid(True)
+    ## mp.show()
