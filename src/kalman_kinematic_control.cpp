@@ -1,4 +1,4 @@
-// kinematic_controller.cpp
+// kalman_kinematic_control.cpp
 // Jarvis Schultz
 // July 11, 2011
 
@@ -6,12 +6,10 @@
 //----------------------------------------------------------------------------
 // Notes
 // ---------------------------------------------------------------------------
-// This program is for 3D trajectory following for a single puppeteer
-// using a kinematic controller.  It subscribes to a version of the
-// estimator node that is driven by a timer.  It then determines the
-// correct controls to send to the robot via a service call to the
-// serial node.
-
+// This version of the kinematic controller is designed to subscribe
+// to data published by the robot_pose_ekf ROS package, and run the
+// kinematic controller based on the results of that filter.  
+//  
 //---------------------------------------------------------------------------
 // Includes
 //---------------------------------------------------------------------------
@@ -46,7 +44,8 @@
 #define DWHEEL	(0.07619999999999)
 #define DPULLEY	(0.034924999999999998)
 #define WIDTH	(0.1323340)
-#define MAX_ANG_VEL  (60.0)
+#define MAX_TRANS_VEL  (2.25)
+#define MAX_ANG_VEL (30.0)
 std::string filename;
 
 template <typename T> int sgn(T val)
@@ -66,7 +65,8 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][5]; // unknown length; time, x, y, Vd, Wd 
+	float vals[][5]; // unknown length;
+			 // t,x,y,Vd,Wd
     } Trajectory;       
 
     int operating_condition;
@@ -78,15 +78,15 @@ private:
     puppeteer_msgs::RobotPose pose;
     bool start_flag;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
-    float vd, wd;
+    float vd, wd, rdotd;
     unsigned int num;
     // Controller gains
     float k1, k2, k3;
     float zeta, b;
-    // std::ofstream tmp_file;
 
 public:
     KinematicControl() {
+	ROS_DEBUG("Instantiating KinematicControl Class");
 	// Initialize necessary variables:
 	if(ros::param::has("operating_condition"))
 	    // set operating_condition to idle so the robot doesn't drive
@@ -111,14 +111,13 @@ public:
 	// set control gain values:
 	zeta = 0.7;
 	b = 10;
-
-	// tmp_file.open("temp.txt");
     }
 
     // This gets called every time the estimator publishes a new robot
     // pose
     void subscriber_cb(const puppeteer_msgs::RobotPose &pose)
 	{
+	    ROS_DEBUG("Subscriber callback triggered");
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
@@ -146,6 +145,7 @@ public:
 
 		    start_flag = false;
 		    base_time = ros::Time::now();
+		    ROS_DEBUG("Setting Base Time to %f",base_time.toSec());
 		    
 		}
 		else
@@ -154,6 +154,8 @@ public:
 		    // let's first get the expected pose at the given time:
 		    running_time = ((ros::Time::now()).toSec()-
 				    base_time.toSec());
+		    ROS_DEBUG("Running time is %f", running_time);
+		    ROS_DEBUG("Final time is %f", traj->vals[num-1][0]);
 		    // check that running_time is less than the final time:
 		    if (running_time <= traj->vals[num-1][0])
 		    {
@@ -207,9 +209,10 @@ public:
 	    else 
 		ROS_ERROR("Failed to call service: speed_command\n");
 	}
-    
+
     void get_desired_pose(float time)
 	{
+	    ROS_DEBUG("Interpolating desired pose");
 	    // This function reads through the trajectory array and
 	    // interpolates the desired pose of the robot at the
 	    // current operating time
@@ -243,21 +246,20 @@ public:
 		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
 	    wd = (traj->vals[index-1][4])+
 		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
+	    // rdotd = (traj->vals[index-1][5])+
+	    // 	mult*(traj->vals[index][5]-traj->vals[index-1][5]);
 
-	    // tmp_file << time << ",";
-	    // tmp_file << desired_x << ",";
-	    // tmp_file << desired_y << ",";
-	    // tmp_file << desired_th << ",";
-	    // tmp_file << vd << ",";
-	    // tmp_file << wd << ",";
-	    // ROS_INFO("vd = %f\twd = %f",vd,wd);
-	    // ROS_INFO("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
+	    rdotd = 0.0;
+	    ROS_DEBUG("Desired values at time t = %f", time);
+	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
+	    ROS_DEBUG("vd = %f\twd = %f\trdotd = %f\t",vd, wd, rdotd);
 	    return;
 	}
 
     void get_control_values(const puppeteer_msgs::RobotPose &pose)
 	{
-	    float v, omega, vleft, vright, dtheta;
+	    ROS_DEBUG("Calculating the control values");
+	    float v, omega, dtheta;
 	    float comps[3];
 	    // This function takes no arguments, it just calculates
 	    // the wheel velocities we should send as dictated by the
@@ -268,15 +270,12 @@ public:
 	    actual_x = pose.x_robot;
 	    actual_y = pose.y_robot;
 	    actual_th = pose.theta;
-	    ROS_INFO("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
+	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
 
 	    // Now calculate the gain values:
 	    k1 = 2*zeta*sqrt(pow(wd,2)+b*pow(vd,2));
 	    k2 = b*fabs(vd);
 	    k3 = k1;
-
-	    // tmp_file << k1 << ",";
-	    // tmp_file << k2 << ",";	    
 
 	    // calc control values:
 	    v = vd*cos(desired_th-actual_th) +
@@ -304,33 +303,28 @@ public:
 		 sin(actual_th)*(desired_x-actual_x))
 		+ k3*dtheta;
 
-	    // Now we can convert those to angular wheel velocities:
-	    vright = (2.0*v+omega*WIDTH)/DWHEEL;
-	    vleft = (2.0*v-omega*WIDTH)/DWHEEL;
-	    
-	    // tmp_file << vright << ",";
-	    // tmp_file << vleft << "\n";	    
-	    
-	    while (vright > MAX_ANG_VEL || vleft > MAX_ANG_VEL)
+	    while (v > MAX_TRANS_VEL || omega > MAX_ANG_VEL)
 	    {
-		vright *= 0.9;
-	        vleft *= 0.9; 
+		v *= 0.9;
+	        omega *= 0.9; 
 	    }
+	    ROS_DEBUG("Commands: v = %f\tomega = %f",v,omega);
 
-	    ROS_INFO("Vleft = %f\tVright = %f",vleft,vright);
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
-	    srv.request.type = 'h';
-	    srv.request.Vleft = vleft;
-	    srv.request.Vright = vright;
-	    srv.request.Vtop = 0.0;
-	    srv.request.div = 3;
-	    	    
+	    srv.request.type = 'd';
+	    srv.request.Vleft = v;
+	    srv.request.Vright = omega;
+	    srv.request.Vtop = 0.0;  //  Disable winches
+	    // srv.request.Vtop = rdotd;
+	    srv.request.div = 4;
+
 	    return;
 	}
 
     void send_start_flag(void)
 	{
+	    ROS_DEBUG("Sending start flag");
 	    // First set the parameters for the service call
 	    srv.request.robot_index = traj->RobotMY;
 	    srv.request.type = 'm';
@@ -422,6 +416,11 @@ public:
 	    traj->vals[num-2][4] = traj->vals[num-3][4];
 	    traj->vals[num-1][3] = traj->vals[num-3][3];
 	    traj->vals[num-1][4] = traj->vals[num-3][4];
+
+	    // let's set some parameters for the initial pose of the robot:
+	    ros::param::set("/robot_x0", traj->vals[0][1]);
+	    ros::param::set("/robot_z0", traj->vals[0][2]);
+	    ros::param::set("/robot_y0", 2.0);
 
 	    return traj;
 	}

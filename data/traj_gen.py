@@ -8,7 +8,7 @@ import pylab as mp
 from math import sin, cos, pi
 
 
-tf = 2.0*pi
+tf = 4.0*pi
 dt = 0.01
 plot_flag = True
 
@@ -29,36 +29,38 @@ def main(fname):
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec
 
-    mk = len(tvec)
-    tstop = tvec[-1]
-    for i in range(200):
-        xref = np.append(xref,xref[-1])
-        yref = np.append(yref,yref[-1])
-        zref = np.append(zref,zref[-1])
-        ## tref = np.append(tref,tref[-1])
-        tvec = np.append(tvec, tvec[i]+tstop)
-        tref = np.append(tref, tref[i]+tstop)
+    ## mk = len(tvec)
+    ## tstop = tvec[-1]
+    ## for i in range(200):
+    ##     xref = np.append(xref,xref[-1])
+    ##     yref = np.append(yref,yref[-1])
+    ##     zref = np.append(zref,zref[-1])
+    ##     ## tref = np.append(tref,tref[-1])
+    ##     tvec = np.append(tvec, tvec[i]+tstop)
+    ##     tref = np.append(tref, tref[i]+tstop)
         
-    tstop = tvec[-1]
-    for i in range(mk-1,-1,-1):
-        xref = np.append(xref, xref[i])
-        yref = np.append(yref, yref[i])
-        zref = np.append(zref, zref[i])
-        tref = np.append(tref, tref[i]-offset)
-        tvec = np.append(tvec, tvec[mk-1-i]+tstop)
+    ## tstop = tvec[-1]
+    ## for i in range(mk-1,-1,-1):
+    ##     xref = np.append(xref, xref[i])
+    ##     yref = np.append(yref, yref[i])
+    ##     zref = np.append(zref, zref[i])
+    ##     tref = np.append(tref, tref[i]-offset)
+    ##     tvec = np.append(tvec, tvec[mk-1-i]+tstop)
 
+    vd, wd = get_curvature(tvec,xref,yref)
         
     ## Write out the length of data:
     f.write("num= "+str(len(tvec))+"\n");
     for i in range(len(tvec)):
-        str1 = '{0: f},{1: f},{2: f},{3: f},{4: f},{5: f}\n'.format(
-            tvec[i], xref[i], yref[i], zref[i], zref[i], tref[i])
+        ## str1 = '{0: f},{1: f},{2: f},{3: f},{4: f},{5: f}\n'.format(
+        ##     tvec[i], xref[i], yref[i], zref[i], zref[i], tref[i])
+        ## str1 = '{0: f},{1: f},{2: f},{3: f},{4: f}\n'.format(
+        ##     tvec[i], xref[i], yref[i], vd[i], wd[i])
+        str1 = '{0: f},{1: f},{2: f},{3: f}\n'.format(
+            tvec[i], xref[i], yref[i], 12.0)
         f.write(str1);
-
-        
     f.close()
 
-    get_curvature(tvec,xref,yref)
     if plot_flag:
         generate_plot(xref, yref, zref, tvec)
 
@@ -94,14 +96,13 @@ def get_curvature(t, x, y):
     vd = np.sqrt(np.power(xd,2.0)+np.power(yd,2.0))
     wd = (np.array(ydd)*np.array(xd)
           -np.array(xdd)*np.array(yd))/(np.power(xd,2.0)+np.power(yd,2.0))
-
+    
     print "vd = ", vd[0:9]
     print "wd = ", wd[0:9]
     for i in range(50):
         print "t = ",t[i],"th = ",th[i]
-        
-                   
-    
+
+    return vd, wd
     
         
     
