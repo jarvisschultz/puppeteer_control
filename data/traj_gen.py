@@ -8,7 +8,7 @@ import pylab as mp
 from math import sin, cos, pi
 
 
-tf = 4.0*pi
+tf = 8.0*pi
 dt = 0.01
 plot_flag = True
 
@@ -22,9 +22,12 @@ def main(fname):
     tref = tvec+offset
 
     ## Define referenc trajectory:
-    xref = 0.5*np.cos(tvec/2.)
-    yref = 0.5*np.sin(tvec/2.)
+    xref = 0.5*np.sin(tvec/2.)
+    yref = 0.5*np.sin(tvec/2./2.)
     zref = 0.0*tvec
+    ## xref = 0.5*np.cos(tvec/2.)-0.5
+    ## yref = 0.5*np.sin(tvec/2.)
+    ## zref = 0.0*tvec
     ## xref = 1.5-1.5*np.exp(-tvec)
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec

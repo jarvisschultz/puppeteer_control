@@ -122,11 +122,28 @@ public:
 	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
 	    
-	    if (operating_condition == 0 || operating_condition == 1 ||
-		operating_condition == 3)
+	    if (operating_condition == 0 || operating_condition == 3)
 	    {
 		start_flag = true;
 		return;
+	    }
+	    else if (operating_condition == 1)
+	    {
+		if (start_flag == true)
+		{
+		    ROS_INFO("Sending initial pose.");
+
+		    // set parameters for sending initial pose
+		    srv.request.robot_index = traj->RobotMY;
+		    srv.request.type = 'l';
+		    srv.request.Vleft = traj->vals[0][1];
+		    srv.request.Vright = traj->vals[0][2];
+		    srv.request.Vtop = atan2(traj->vals[1][2]-traj->vals[0][2],
+					     traj->vals[1][1]-traj->vals[0][1]);
+		    srv.request.div = 4;
+
+		    start_flag = false;
+		}
 	    }
 	    else if (operating_condition == 2)
 	    {
