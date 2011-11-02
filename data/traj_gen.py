@@ -8,7 +8,7 @@ import pylab as mp
 from math import sin, cos, pi
 
 
-tf = 8.0*pi
+tf = 5.0
 dt = 0.01
 plot_flag = True
 
@@ -22,9 +22,14 @@ def main(fname):
     tref = tvec+offset
 
     ## Define referenc trajectory:
-    xref = 0.5*np.sin(tvec/2.)
-    yref = 0.5*np.sin(tvec/2./2.)
+    
+    xref = tvec/5.0
+    yref = 0.0*np.sin(tvec/2./2.)
     zref = 0.0*tvec
+    
+    ## xref = 0.5*np.sin(tvec/2.)
+    ## yref = 0.5*np.sin(tvec/2./2.)
+    ## zref = 0.0*tvec
     ## xref = 0.5*np.cos(tvec/2.)-0.5
     ## yref = 0.5*np.sin(tvec/2.)
     ## zref = 0.0*tvec
@@ -50,7 +55,7 @@ def main(fname):
     ##     tref = np.append(tref, tref[i]-offset)
     ##     tvec = np.append(tvec, tvec[mk-1-i]+tstop)
 
-    vd, wd = get_curvature(tvec,xref,yref)
+    ## vd, wd = get_curvature(tvec,xref,yref)
         
     ## Write out the length of data:
     f.write("num= "+str(len(tvec))+"\n");
@@ -105,7 +110,7 @@ def get_curvature(t, x, y):
     for i in range(50):
         print "t = ",t[i],"th = ",th[i]
 
-    return vd, wd
+    return vd, wd, th
     
         
     

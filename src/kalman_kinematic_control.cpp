@@ -74,9 +74,10 @@ private:
     ros::NodeHandle n_;
     ros::ServiceClient client;
     ros::Subscriber sub;
+    ros::Timer timer;
     puppeteer_msgs::speed_command srv;
     puppeteer_msgs::RobotPose pose;
-    bool start_flag;
+    bool start_flag, cal_start_flag;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
     float vd, wd, rdotd;
     unsigned int num;
@@ -104,6 +105,8 @@ public:
 	client = n_.serviceClient<puppeteer_msgs::speed_command>("speed_command");
 	// Define subscriber:
 	sub = n_.subscribe("/robot_pose", 1, &KinematicControl::subscriber_cb, this);
+	// Define a timer and callback for checking system state:
+	timer = n_.createTimer(ros::Duration(0.1), &KinematicControl::timercb, this);
 
 	// Send a start flag:
 	send_start_flag();
@@ -111,7 +114,25 @@ public:
 	// set control gain values:
 	zeta = 0.7;
 	b = 10;
+
+	// set flags:
+	cal_start_flag = true;
+	start_flag = true;
     }
+
+    void timercb(const ros::TimerEvent& e)
+	{
+	    ROS_DEBUG("Timer callback triggered");
+	    int operating_condition = 0;
+	    ros::param::get("/operating_condition", operating_condition);
+
+	    if(operating_condition == 3 || operating_condition == 4)
+	    {
+		start_flag = true;
+		cal_start_flag = true;
+	    }
+	    return;
+	}
 
     // This gets called every time the estimator publishes a new robot
     // pose
@@ -125,11 +146,12 @@ public:
 	    if (operating_condition == 0 || operating_condition == 3)
 	    {
 		start_flag = true;
+		cal_start_flag = true;
 		return;
 	    }
 	    else if (operating_condition == 1)
 	    {
-		if (start_flag == true)
+		if (cal_start_flag == true)
 		{
 		    ROS_INFO("Sending initial pose.");
 
@@ -142,8 +164,9 @@ public:
 					     traj->vals[1][1]-traj->vals[0][1]);
 		    srv.request.div = 4;
 
-		    start_flag = false;
+		    cal_start_flag = false;
 		}
+		ROS_INFO_THROTTLE(5, "Calibrating...");
 	    }
 	    else if (operating_condition == 2)
 	    {
@@ -192,6 +215,7 @@ public:
 			// set operating_condition to stop
 			ros::param::set("operating_condition", 3);
 			start_flag = true;
+			cal_start_flag = true;
 		    }
 		}
 	    }
@@ -205,6 +229,7 @@ public:
 		srv.request.Vtop = 0.0;
 		srv.request.div = 3;
 		start_flag = true;
+		cal_start_flag = true;
 	    }
 	    
 	    // send request to service
