@@ -464,6 +464,14 @@ public:
 	    ros::param::set("/robot_z0", traj->vals[0][2]);
 	    ros::param::set("/robot_y0", 2.0);
 
+	    double th = atan2(traj->vals[1][1]-traj->vals[0][1],
+			      traj->vals[1][2]-traj->vals[0][2]);
+	    while (th <= -M_PI)
+		th += 2.0*M_PI;
+	    while (th > M_PI)
+		th -= 2.0*M_PI;
+	    ros::param::set("/robot_th0", th);
+
 	    return traj;
 	}
 };
