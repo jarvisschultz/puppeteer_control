@@ -8,6 +8,8 @@ bin/
 build/
 data/
 
+*TAGS
+
 
 # github ignore suggestions...
 
