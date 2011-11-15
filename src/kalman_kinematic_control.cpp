@@ -16,9 +16,12 @@
 
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <nav_msgs/Odometry.h>
+#include <tf/transform_datatypes.h>
 
 #include <puppeteer_msgs/speed_command.h>
 #include <puppeteer_msgs/RobotPose.h>
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,7 +107,7 @@ public:
 	// Define service client:
 	client = n_.serviceClient<puppeteer_msgs::speed_command>("speed_command");
 	// Define subscriber:
-	sub = n_.subscribe("/robot_pose", 1, &KinematicControl::subscriber_cb, this);
+	sub = n_.subscribe("/pose_ekf", 1, &KinematicControl::subscriber_cb, this);
 	// Define a timer and callback for checking system state:
 	timer = n_.createTimer(ros::Duration(0.1), &KinematicControl::timercb, this);
 
@@ -136,7 +139,8 @@ public:
 
     // This gets called every time the estimator publishes a new robot
     // pose
-    void subscriber_cb(const puppeteer_msgs::RobotPose &pose)
+    // void subscriber_cb(const puppeteer_msgs::RobotPose &pose)
+    void subscriber_cb(const nav_msgs::Odometry &pose)
 	{
 	    ROS_DEBUG("Subscriber callback triggered");
 	    static double running_time = 0.0;
@@ -278,10 +282,11 @@ public:
 	    // the next point
 	    desired_th = atan2(traj->vals[index][2]-desired_y,
 			       traj->vals[index][1]-desired_x);
-	    while (desired_th <= -M_PI)
-		desired_th += 2.0*M_PI;
-	    while (desired_th > M_PI)
-		desired_th -= 2.0*M_PI;
+	    desired_th = clamp_angle(desired_th);
+	    // while (desired_th <= -M_PI)
+	    // 	desired_th += 2.0*M_PI;
+	    // while (desired_th > M_PI)
+	    // 	desired_th -= 2.0*M_PI;
 
 	    // Now, we can interpolate the feedforward terms:
 	    vd = (traj->vals[index-1][3])+
@@ -298,20 +303,26 @@ public:
 	    return;
 	}
 
-    void get_control_values(const puppeteer_msgs::RobotPose &pose)
+    // void get_control_values(const puppeteer_msgs::RobotPose &pose)
+    void get_control_values(const nav_msgs::Odometry &p)
 	{
 	    ROS_DEBUG("Calculating the control values");
 	    float v, omega, dtheta;
 	    float comps[3];
-	    // This function takes no arguments, it just calculates
-	    // the wheel velocities we should send as dictated by the
-	    // closed loop controller.  It also sets those parameters
-	    // in the serial service
 
-	    // find the robot returned values:
-	    actual_x = pose.x_robot;
-	    actual_y = pose.y_robot;
-	    actual_th = pose.theta;
+	    // Fill out the robot's pose by transforming the published
+	    // odometry message into the robot's own reference frame
+	    actual_x = p.pose.pose.position.x;
+	    actual_y = -p.pose.pose.position.y;
+
+	    actual_th = tf::getYaw(p.pose.pose.orientation);
+	    actual_th = clamp_angle(-actual_th);
+	    
+
+	    
+	    // actual_x = pose.x_robot;
+	    // actual_y = pose.y_robot;
+	    // actual_th = pose.theta;
 	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
 
 	    // Now calculate the gain values:
@@ -466,13 +477,25 @@ public:
 
 	    double th = atan2(traj->vals[1][1]-traj->vals[0][1],
 			      traj->vals[1][2]-traj->vals[0][2]);
-	    while (th <= -M_PI)
-		th += 2.0*M_PI;
-	    while (th > M_PI)
-		th -= 2.0*M_PI;
+
+	    th = clamp_angle(th);
+	    // while (th <= -M_PI)
+	    // 	th += 2.0*M_PI;
+	    // while (th > M_PI)
+	    // 	th -= 2.0*M_PI;
 	    ros::param::set("/robot_th0", th);
 
 	    return traj;
+	}
+
+    double clamp_angle(const double theta)
+	{
+	    double th = theta;
+	    while(th > M_PI)
+		th -= 2.0*M_PI;
+	    while(th <= -M_PI)
+		th += 2.0*M_PI;
+	    return th;
 	}
 };
 
