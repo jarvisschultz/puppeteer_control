@@ -23,38 +23,29 @@ def main(fname):
 
     ## Define referenc trajectory:
     
-    ## xref = 0.0*tvec
+    ## xref = (1/(2.0*pi))*tvec
     ## yref = 0.0*np.sin(tvec/2./2.)
     ## zref = 0.0*tvec
     
-    xref = 0.5*np.sin(tvec/2.)
-    yref = 0.5*np.sin(tvec/2./2.)
-    zref = 0.0*tvec
-    
-    ## xref = 0.5*np.cos(tvec/2.)-0.5
-    ## yref = 0.5*np.sin(tvec/2.)
-    ## zref = 0.0*tvec
-    ## xref = 1.5-1.5*np.exp(-tvec)
-    ## yref = 0.0*tvec
-    ## zref = 0.0*tvec
-
-    ## mk = len(tvec)
-    ## tstop = tvec[-1]
-    ## for i in range(200):
+    ## for i in range(int(5.0/dt)):
+    ##     tvec = np.append(tvec,tvec[-1]+dt)
+    ##     tref = np.append(tref,tref[-1]+dt)
+    ##     ## np.append(tvec,tvec[-1])
+    ##     ## np.append(tref,tref[-1])
     ##     xref = np.append(xref,xref[-1])
     ##     yref = np.append(yref,yref[-1])
     ##     zref = np.append(zref,zref[-1])
-    ##     ## tref = np.append(tref,tref[-1])
-    ##     tvec = np.append(tvec, tvec[i]+tstop)
-    ##     tref = np.append(tref, tref[i]+tstop)
-        
-    ## tstop = tvec[-1]
-    ## for i in range(mk-1,-1,-1):
-    ##     xref = np.append(xref, xref[i])
-    ##     yref = np.append(yref, yref[i])
-    ##     zref = np.append(zref, zref[i])
-    ##     tref = np.append(tref, tref[i]-offset)
-    ##     tvec = np.append(tvec, tvec[mk-1-i]+tstop)
+
+    ## xref = 0.5*np.sin(tvec/2.)
+    ## yref = 0.5*np.sin(tvec/2./2.)
+    ## zref = 0.0*tvec
+    
+    xref = 0.5*np.cos(tvec/2.)-0.5
+    yref = 0.5*np.sin(tvec/2.)
+    zref = 0.0*tvec
+    ## xref = 1.5-1.5*np.exp(-tvec)
+    ## yref = 0.0*tvec
+    ## zref = 0.0*tvec
 
     vd, wd = get_curvature(tvec,xref,yref)
         
@@ -70,6 +61,10 @@ def main(fname):
         f.write(str1);
     f.close()
 
+    ## Now let's copy that file to a new directory:
+    cmd = "cp "+fname+" /home/jarvis/Dropbox/mathematica/TrajectoryGenerator/data/kalman_debugging/"
+    os.system(cmd)
+    
     if plot_flag:
         generate_plot(xref, yref, zref, tvec)
 

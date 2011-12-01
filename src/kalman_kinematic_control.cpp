@@ -282,11 +282,8 @@ public:
 	    // the next point
 	    desired_th = atan2(traj->vals[index][2]-desired_y,
 			       traj->vals[index][1]-desired_x);
-	    desired_th = clamp_angle(desired_th);
-	    // while (desired_th <= -M_PI)
-	    // 	desired_th += 2.0*M_PI;
-	    // while (desired_th > M_PI)
-	    // 	desired_th -= 2.0*M_PI;
+	    if (isnan(desired_th) == 0)
+		desired_th = clamp_angle(desired_th);
 
 	    // Now, we can interpolate the feedforward terms:
 	    vd = (traj->vals[index-1][3])+
@@ -318,11 +315,7 @@ public:
 	    actual_th = tf::getYaw(p.pose.pose.orientation);
 	    actual_th = clamp_angle(-actual_th);
 	    
-
 	    
-	    // actual_x = pose.x_robot;
-	    // actual_y = pose.y_robot;
-	    // actual_th = pose.theta;
 	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
 
 	    // Now calculate the gain values:
@@ -356,12 +349,15 @@ public:
 		 sin(actual_th)*(desired_x-actual_x))
 		+ k3*dtheta;
 
+	    if (isnan(v) != 0)
+		v = 0.0;
+	    if (isnan(omega) != 0)
+		omega = 0.0;
 	    while (v > MAX_TRANS_VEL || omega > MAX_ANG_VEL)
 	    {
 		v *= 0.9;
 	        omega *= 0.9; 
 	    }
-	    ROS_DEBUG("Commands: v = %f\tomega = %f",v,omega);
 
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
@@ -478,12 +474,13 @@ public:
 	    double th = atan2(traj->vals[1][1]-traj->vals[0][1],
 			      traj->vals[1][2]-traj->vals[0][2]);
 
-	    th = clamp_angle(th);
-	    // while (th <= -M_PI)
-	    // 	th += 2.0*M_PI;
-	    // while (th > M_PI)
-	    // 	th -= 2.0*M_PI;
-	    ros::param::set("/robot_th0", th);
+	    if (isnan(th) == 0)
+	    {
+		th = clamp_angle(th);
+		ros::param::set("/robot_th0", th);
+	    }
+	    else
+		ROS_ERROR("Initial angle returned NaN!");
 
 	    return traj;
 	}
