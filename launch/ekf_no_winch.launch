@@ -1,0 +1,34 @@
+<launch>
+  <!--start kinect... note if it is already running, the other
+      instance will be automatically killed-->
+  <include file="$(find openni_camera)/launch/openni_node.launch"/>
+ 
+  <!--first launch the object tracker... can we pass a param to
+      specify if we want just the robot or a robot plus an object?-->
+  <include file="$(find objecttracker_nu)/launch/robot_tracking.launch"/>
+
+  <!--now let's launch the serial node-->
+  <node pkg="serial_node" type="serial_node" name="serial_node"
+	output="log" required="true" />
+
+  <!--now let's launch the puppeteer_control node while passing
+       correct args-->
+  <arg name="file" default="default.txt" />
+  <node pkg="puppeteer_control" type="kalman_controller"
+	name="kinematic_controller" output="screen" respawn="false"
+	cwd="node" args="-f $(arg file)"/>
+
+  <!--launch the estimator node-->
+  <node pkg="estimator_node" type="kalman_estimator"
+	name="kalman_estimator" output="screen" respawn="true" />
+
+  <!--launch the filtering node-->
+  <node pkg="filtering_node" type="ekf_estimator"
+	name="ekf_implementation" output="screen" respawn="true" />
+
+  <!--launch the keyboard node-->
+  <node pkg="keyboard_node" type="keyboard_node"
+	name="keyboard_interface" output="screen" respawn="true"
+	launch-prefix="xterm -rv -e" />
+
+</launch>
