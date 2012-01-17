@@ -14,9 +14,10 @@
   <!--now let's launch the puppeteer_control node while passing
        correct args-->
   <arg name="file" default="default.txt" />
+  <arg name="dir" default="$(find puppeteer_control)/data/" />
   <node pkg="puppeteer_control" type="kalman_controller"
 	name="kinematic_controller" output="screen" respawn="false"
-	cwd="node" args="-f $(arg file)"/>
+	cwd="node" args="-f $(arg file) -p $(arg dir)"/>
 
   <!--launch the estimator node-->
   <node pkg="estimator_node" type="kalman_estimator"
