@@ -1,11 +1,17 @@
 <launch>
+
+  <!--let's see if we should be running the winch or not-->
+  <arg name="winch" default="false" />
+  <param name="winch_bool" type="bool" value="$(arg winch)" />
+  
   <!--start kinect... note if it is already running, the other
       instance will be automatically killed-->
   <include file="$(find openni_camera)/launch/openni_node.launch"/>
  
-  <!--first launch the object tracker... can we pass a param to
-      specify if we want just the robot or a robot plus an object?-->
-  <include file="$(find objecttracker_nu)/launch/robot_tracking.launch"/>
+  <!--first launch the object tracker, checking if we are tracking the
+       robot or the system -->
+  <arg name="track" default="robot" />
+  <include file="$(find objecttracker_nu)/launch/$(arg track)_tracking.launch"/>
 
   <!--now let's launch the serial node-->
   <node pkg="serial_node" type="serial_node" name="serial_node"
@@ -23,13 +29,14 @@
   <node pkg="estimator_node" type="kalman_estimator"
 	name="kalman_estimator" output="screen" respawn="true" />
 
-  <!--launch the filtering node-->
-  <node pkg="filtering_node" type="ekf_estimator"
-	name="ekf_implementation" output="screen" respawn="true" />
-
   <!--launch the keyboard node-->
   <node pkg="keyboard_node" type="keyboard_node"
 	name="keyboard_interface" output="screen" respawn="true"
 	launch-prefix="xterm -rv -e" />
+
+  <!--launch the filtering node-->
+  <node pkg="filtering_node" type="ekf_estimator"
+	name="ekf_implementation" output="screen" respawn="true" />
+
 
 </launch>

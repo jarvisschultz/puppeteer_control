@@ -68,8 +68,8 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][5]; // unknown length;
-			 // t,x,y,Vd,Wd
+	float vals[][6]; // unknown length;
+			 // t,x,y,Vd,Wd,r
     } Trajectory;       
 
     int operating_condition;
@@ -93,12 +93,19 @@ public:
 	ROS_DEBUG("Instantiating KinematicControl Class");
 	// Initialize necessary variables:
 	if(ros::param::has("operating_condition"))
-	    // set operating_condition to idle so the robot doesn't drive
 	    ros::param::set("operating_condition", 0);
 	else
 	{
 	    ROS_WARN("Cannot Find Parameter: operating_condition");
 	    ros::param::set("operating_condition", 0);
+	}
+
+	// check if we are running the winches... if not, let's set
+	// the parameter to say so
+	if(!ros::param::has("winch_bool"))
+	{
+	    ROS_WARN("No winch parameter... setting to false");
+	    ros::param::set("winch_bool",false);
 	}
 	
 	// Read in the trajectory:
@@ -290,10 +297,9 @@ public:
 		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
 	    wd = (traj->vals[index-1][4])+
 		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
-	    // rdotd = (traj->vals[index-1][5])+
-	    // 	mult*(traj->vals[index][5]-traj->vals[index-1][5]);
+	    rdotd = (traj->vals[index-1][5])+
+	    	mult*(traj->vals[index][5]-traj->vals[index-1][5]);
 
-	    rdotd = 0.0;
 	    ROS_DEBUG("Desired values at time t = %f", time);
 	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
 	    ROS_DEBUG("vd = %f\twd = %f\trdotd = %f\t",vd, wd, rdotd);
@@ -304,8 +310,7 @@ public:
     void get_control_values(const nav_msgs::Odometry &p)
 	{
 	    ROS_DEBUG("Calculating the control values");
-	    float v, omega, dtheta;
-	    float comps[3];
+	    float v, omega;// , dtheta;
 
 	    // Fill out the robot's pose by transforming the published
 	    // odometry message into the robot's own reference frame
@@ -327,32 +332,18 @@ public:
 	    v = vd*cos(desired_th-actual_th) +
 		k1*(cos(actual_th)*(desired_x-actual_x)+
 		    sin(actual_th)*(desired_y-actual_y));
-	    comps[0] = desired_th-actual_th-2.0*M_PI;
-	    comps[1] = desired_th-actual_th+2.0*M_PI;
-	    comps[2] = desired_th-actual_th;
-	    if (abs(comps[0]) < abs(comps[1]))
-	    {
-		if (abs(comps[0]) < abs(comps[2]))
-		    dtheta = comps[0];
-		else
-		    dtheta = comps[2];
-	    }
-	    else
-	    {
-		if (abs(comps[1]) < abs(comps[2]))
-		    dtheta = comps[1];
-		else
-		    dtheta = comps[2];
-	    }
 	    omega = wd + k2*((float) sgn(vd))*
-		(cos(actual_th)*(desired_y-actual_y)-
-		 sin(actual_th)*(desired_x-actual_x))
-		+ k3*dtheta;
+	    	(cos(actual_th)*(desired_y-actual_y)-
+	    	 sin(actual_th)*(desired_x-actual_x))
+	    	+ k3*angle_correction(desired_th, actual_th);
 
+	    // check to make sure no errors occurred
 	    if (isnan(v) != 0)
 		v = 0.0;
 	    if (isnan(omega) != 0)
 		omega = 0.0;
+
+	    // prevent out-of-control speeds
 	    while (v > MAX_TRANS_VEL || omega > MAX_ANG_VEL)
 	    {
 		v *= 0.9;
@@ -364,8 +355,12 @@ public:
 	    srv.request.type = 'd';
 	    srv.request.Vleft = v;
 	    srv.request.Vright = omega;
-	    srv.request.Vtop = 0.0;  //  Disable winches
-	    // srv.request.Vtop = rdotd;
+	    bool winch = false;
+	    ros::param::get("winch_bool", winch);
+	    if (winch)
+		srv.request.Vtop = rdotd;
+	    else
+		srv.request.Vtop = 0.0;  //  Disable winches
 	    srv.request.div = 4;
 
 	    return;
@@ -426,13 +421,18 @@ public:
 	    for (i=0; i<num; i++)
 	    {
 		for (j=0; j<3; j++)
-		{		
+		{
+		    // fill out t,x,y
 		    getline(file, line, ',');
 		    std::stringstream ss(line);
 		    ss >> temp_float;
 		    traj->vals[i][j] = temp_float;
 		}
+		// fill out r
 		getline(file, line);
+		std::stringstream ss(line);
+		ss >> temp_float;
+		traj->vals[i][5] = temp_float;
 	    }
 	    file.close();
 	    
@@ -470,6 +470,7 @@ public:
 	    ros::param::set("/robot_x0", traj->vals[0][1]);
 	    ros::param::set("/robot_z0", traj->vals[0][2]);
 	    ros::param::set("/robot_y0", 2.0);
+	    ros::param::set("/robot_r0", traj->vals[0][5]);
 
 	    double th = atan2(traj->vals[1][1]-traj->vals[0][1],
 			      traj->vals[1][2]-traj->vals[0][2]);
@@ -493,6 +494,14 @@ public:
 	    while(th <= -M_PI)
 		th += 2.0*M_PI;
 	    return th;
+	}
+    
+    double angle_correction(double desired, double actual)
+	{
+	    double tmp = actual;
+	    while ((desired-tmp) > M_PI) tmp -= 2.0*M_PI;
+	    while ((desired-tmp) < -M_PI) tmp += 2.0*M_PI;
+	    return(desired-tmp);
 	}
 };
 
