@@ -80,7 +80,7 @@ private:
     ros::Timer timer;
     puppeteer_msgs::speed_command srv;
     puppeteer_msgs::RobotPose pose;
-    bool start_flag, cal_start_flag;
+    bool start_flag, cal_start_flag, winch;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
     float vd, wd, rdotd;
     unsigned int num;
@@ -197,7 +197,9 @@ public:
 		    start_flag = false;
 		    base_time = ros::Time::now();
 		    ROS_DEBUG("Setting Base Time to %f",base_time.toSec());
-		    
+
+		    // check if we are running the winch:
+		    check_winch();		    
 		}
 		else
 		{
@@ -328,6 +330,8 @@ public:
 	    k2 = b*fabs(vd);
 	    k3 = k1;
 
+	    ROS_DEBUG("Gains: %f  %f  %f",k1,k2,k3);
+	    
 	    // calc control values:
 	    v = vd*cos(desired_th-actual_th) +
 		k1*(cos(actual_th)*(desired_x-actual_x)+
@@ -336,6 +340,8 @@ public:
 	    	(cos(actual_th)*(desired_y-actual_y)-
 	    	 sin(actual_th)*(desired_x-actual_x))
 	    	+ k3*angle_correction(desired_th, actual_th);
+
+	    ROS_DEBUG("Intermediate value of control values: v = %f\tw = %f",v,omega);
 
 	    // check to make sure no errors occurred
 	    if (isnan(v) != 0)
@@ -350,13 +356,14 @@ public:
 	        omega *= 0.9; 
 	    }
 
+	    ROS_DEBUG("Sending control values: v = %f\tw = %f",v,omega);
+
 	    // Set service parameters:
 	    srv.request.robot_index = traj->RobotMY;
 	    srv.request.type = 'd';
 	    srv.request.Vleft = v;
 	    srv.request.Vright = omega;
-	    bool winch = false;
-	    ros::param::get("winch_bool", winch);
+
 	    if (winch)
 		srv.request.Vtop = rdotd;
 	    else
@@ -498,10 +505,25 @@ public:
     
     double angle_correction(double desired, double actual)
 	{
+	    ROS_DEBUG("Inputs to angle correction: desired = %f  actual = "
+		      "%f  diff = %f", desired, actual, desired-actual);
 	    double tmp = actual;
-	    while ((desired-tmp) > M_PI) tmp -= 2.0*M_PI;
-	    while ((desired-tmp) < -M_PI) tmp += 2.0*M_PI;
+	    while ((desired-tmp) > M_PI) tmp += 2.0*M_PI;
+	    while ((desired-tmp) < -M_PI) tmp -= 2.0*M_PI;
+	    ROS_DEBUG("Output of angle_correction is %f",desired-tmp);
 	    return(desired-tmp);
+	}
+
+    void check_winch(void)
+	{
+	    // check if we are running the winches... if not, let's set
+	    // the parameter to say so
+	    if(!ros::param::has("winch_bool"))
+		ros::param::set("winch_bool",false);
+	    ROS_DEBUG("Checking winch bool");
+	    ros::param::get("winch_bool", winch);
+	    ROS_DEBUG("/winch_bool = %d", winch);	    
+
 	}
 };
 
@@ -583,8 +605,12 @@ void command_line_parser(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+    ROSCONSOLE_AUTOINIT;
+    
     // startup node
     ros::init(argc, argv, "kinematic_controller");
+    // log4cxx::LoggerPtr my_logger = log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
+    // my_logger->setLevel(ros::console::g_level_lookup[ros::console::levels::Debug]);
     ros::NodeHandle n;
 
     command_line_parser(argc, argv);

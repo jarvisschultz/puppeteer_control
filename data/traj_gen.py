@@ -70,7 +70,7 @@ def main(fname):
 
 def generate_plot(xref, yref, zref, tref):
     mp.subplot(211)
-    a = mp.plot(xref, yref, '-')#, lw=2)
+    a = mp.plot(xref[1:-1], yref[1:-1], '-')#, lw=2)
     ## a = mp.plot(tref, xref, '*')
     mp.axis('equal')
     mp.ylabel('y (m)')
@@ -101,8 +101,8 @@ def get_curvature(t, x, y):
     wd = (np.array(ydd)*np.array(xd)
           -np.array(xdd)*np.array(yd))/(np.power(xd,2.0)+np.power(yd,2.0))
     
-    print "vd = ", vd[0:9]
-    print "wd = ", wd[0:9]
+    ## print "vd = ", vd[0:9]
+    ## print "wd = ", wd[0:9]
     ## for i in range(50):
     ##     print "t = ",t[i],"th = ",th[i]
 
@@ -157,9 +157,9 @@ if __name__ == "__main__" :
         plot_flag = True
         
 
-    print "Output filename is: ",fname
-    print "dt = ",dt
-    print "tf = ",tf
+    ## print "Output filename is: ",fname
+    ## print "dt = ",dt
+    ## print "tf = ",tf
     main(fname)
 
 
