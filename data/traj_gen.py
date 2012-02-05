@@ -36,13 +36,13 @@ def main(fname):
     ##     yref = np.append(yref,yref[-1])
     ##     zref = np.append(zref,zref[-1])
 
-    ## xref = 0.5*np.sin(tvec/2.)
-    ## yref = 0.5*np.sin(tvec/2./2.)
-    ## zref = 0.0*tvec
-    
-    xref = 0.5*np.cos(tvec/2.)-0.5
     yref = 0.5*np.sin(tvec/2.)
+    xref = 0.5*np.sin(tvec/2./2.)
     zref = 0.0*tvec
+    
+    ## xref = 0.5*np.cos(tvec/2.)-0.5
+    ## yref = 0.5*np.sin(tvec/2.)
+    ## zref = 0.0*tvec
     ## xref = 1.5-1.5*np.exp(-tvec)
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec
@@ -70,7 +70,7 @@ def main(fname):
 
 def generate_plot(xref, yref, zref, tref):
     mp.subplot(211)
-    a = mp.plot(xref[1:-1], yref[1:-1], '-')#, lw=2)
+    a = mp.plot(xref[1:900], yref[1:900], '-')#, lw=2)
     ## a = mp.plot(tref, xref, '*')
     mp.axis('equal')
     mp.ylabel('y (m)')
