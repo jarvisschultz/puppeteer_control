@@ -18,6 +18,7 @@
 #include <ros/package.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
 
 #include <puppeteer_msgs/speed_command.h>
 #include <puppeteer_msgs/RobotPose.h>
@@ -78,8 +79,11 @@ private:
     ros::ServiceClient client;
     ros::Subscriber sub;
     ros::Timer timer;
+    ros::Publisher ref_pub;
     puppeteer_msgs::speed_command srv;
-    puppeteer_msgs::RobotPose pose;
+    // puppeteer_msgs::RobotPose pose;
+    tf::TransformBroadcaster br;
+    nav_msgs::Odometry ref_pose;
     bool start_flag, cal_start_flag, winch;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
     float vd, wd, rdotd;
@@ -87,6 +91,7 @@ private:
     // Controller gains
     float k1, k2, k3;
     float zeta, b;
+
 
 public:
     KinematicControl() {
@@ -112,12 +117,17 @@ public:
 	traj = ReadControls(filename);
 
 	// Define service client:
-	client = n_.serviceClient<puppeteer_msgs::speed_command>("speed_command");
+	client = n_.serviceClient<puppeteer_msgs::speed_command>
+	    ("speed_command");
 	// Define subscriber:
-	sub = n_.subscribe("/pose_ekf", 1, &KinematicControl::subscriber_cb, this);
+	sub = n_.subscribe("/pose_ekf", 1, &KinematicControl::subscriber_cb
+			   , this);
 	// Define a timer and callback for checking system state:
-	timer = n_.createTimer(ros::Duration(0.1), &KinematicControl::timercb, this);
-
+	timer = n_.createTimer(ros::Duration(0.1),
+			       &KinematicControl::timercb, this);
+	// Define a publisher for publishing the robot's reference pose
+	ref_pub = n_.advertise<nav_msgs::Odometry> ("reference_pose", 100);
+	
 	// Send a start flag:
 	send_start_flag();
 	
@@ -146,7 +156,6 @@ public:
 
     // This gets called every time the estimator publishes a new robot
     // pose
-    // void subscriber_cb(const puppeteer_msgs::RobotPose &pose)
     void subscriber_cb(const nav_msgs::Odometry &pose)
 	{
 	    ROS_DEBUG("Subscriber callback triggered");
@@ -171,8 +180,9 @@ public:
 		    srv.request.type = 'l';
 		    srv.request.Vleft = traj->vals[0][1];
 		    srv.request.Vright = traj->vals[0][2];
-		    srv.request.Vtop = atan2(traj->vals[1][2]-traj->vals[0][2],
-					     traj->vals[1][1]-traj->vals[0][1]);
+		    srv.request.Vtop = atan2(
+			traj->vals[1][2]-traj->vals[0][2],
+			traj->vals[1][1]-traj->vals[0][1]);
 		    srv.request.div = 4;
 
 		    cal_start_flag = false;
@@ -190,8 +200,9 @@ public:
 		    srv.request.type = 'l';
 		    srv.request.Vleft = traj->vals[0][1];
 		    srv.request.Vright = traj->vals[0][2];
-		    srv.request.Vtop = atan2(traj->vals[1][2]-traj->vals[0][2],
-					     traj->vals[1][1]-traj->vals[0][1]);
+		    srv.request.Vtop = atan2(
+			traj->vals[1][2]-traj->vals[0][2],
+			traj->vals[1][1]-traj->vals[0][1]);
 		    srv.request.div = 4;
 
 		    start_flag = false;
@@ -212,7 +223,7 @@ public:
 		    // check that running_time is less than the final time:
 		    if (running_time <= traj->vals[num-1][0])
 		    {
-			get_desired_pose(running_time);
+			get_desired_pose(running_time, pose);
 			get_control_values(pose);
 		    }
 		    else
@@ -265,7 +276,7 @@ public:
 		ROS_ERROR("Failed to call service: speed_command\n");
 	}
 
-    void get_desired_pose(float time)
+    void get_desired_pose(float time, const nav_msgs::Odometry &p)
 	{
 	    ROS_DEBUG("Interpolating desired pose");
 	    // This function reads through the trajectory array and
@@ -303,8 +314,35 @@ public:
 	    	mult*(traj->vals[index][5]-traj->vals[index-1][5]);
 
 	    ROS_DEBUG("Desired values at time t = %f", time);
-	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",desired_x, desired_y, desired_th);
+	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",
+		      desired_x, desired_y, desired_th);
 	    ROS_DEBUG("vd = %f\twd = %f\trdotd = %f\t",vd, wd, rdotd);
+
+	    // now we can convert the desired pose into a
+	    // nav_msgs::Odometry and publish it
+	    ref_pose.header.stamp = p.header.stamp;
+	    ref_pose.header.frame_id = "robot_odom_pov";
+	    ref_pose.child_frame_id = "base_footprint_ref";
+	    ref_pose.pose.pose.position.x = desired_x;
+	    ref_pose.pose.pose.position.y = desired_y;
+	    ref_pose.pose.pose.position.z = 0;
+	    geometry_msgs::Quaternion quat =
+		tf::createQuaternionMsgFromYaw(desired_th);
+	    ref_pose.pose.pose.orientation = quat;
+	    ref_pub.publish(ref_pose);
+
+	    // now, let's publish the transform that goes along with it
+	    geometry_msgs::TransformStamped ref_trans;
+	    ref_trans.header.stamp = ref_pose.header.stamp;
+	    ref_trans.header.frame_id = ref_pose.header.frame_id;
+	    ref_trans.child_frame_id = ref_pose.child_frame_id;
+	    ref_trans.transform.translation.x = ref_pose.pose.pose.position.x;
+	    ref_trans.transform.translation.y = ref_pose.pose.pose.position.y;
+	    ref_trans.transform.translation.z = ref_pose.pose.pose.position.z;
+	    ref_trans.transform.rotation = quat;
+
+	    br.sendTransform(ref_trans);	    
+	    	    
 	    return;
 	}
 
@@ -323,7 +361,8 @@ public:
 	    actual_th = clamp_angle(-actual_th);
 	    
 	    
-	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",actual_x, actual_y, actual_th);
+	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",
+		      actual_x, actual_y, actual_th);
 
 	    // Now calculate the gain values:
 	    k1 = 2*zeta*sqrt(pow(wd,2)+b*pow(vd,2));
@@ -341,7 +380,8 @@ public:
 	    	 sin(actual_th)*(desired_x-actual_x))
 	    	+ k3*angle_correction(desired_th, actual_th);
 
-	    ROS_DEBUG("Intermediate value of control values: v = %f\tw = %f",v,omega);
+	    ROS_DEBUG("Intermediate value of control values: v = %f\tw = %f"
+		      ,v,omega);
 
 	    // check to make sure no errors occurred
 	    if (isnan(v) != 0)
@@ -609,8 +649,10 @@ int main(int argc, char** argv)
     
     // startup node
     ros::init(argc, argv, "kinematic_controller");
-    // log4cxx::LoggerPtr my_logger = log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
-    // my_logger->setLevel(ros::console::g_level_lookup[ros::console::levels::Debug]);
+    // log4cxx::LoggerPtr my_logger =
+    // log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
+    // my_logger->setLevel(
+    // ros::console::g_level_lookup[ros::console::levels::Debug]);
     ros::NodeHandle n;
 
     command_line_parser(argc, argv);
