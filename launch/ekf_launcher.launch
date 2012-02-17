@@ -35,7 +35,7 @@
 	launch-prefix="xterm -rv -e" />
 
   <!--launch the filtering node-->
-  <node pkg="filtering_node" type="ekf_estimator"
+  <node pkg="filtering_node" type="ekf_filter"
 	name="ekf_implementation" output="screen" respawn="true" />
 
 
