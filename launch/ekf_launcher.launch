@@ -3,7 +3,10 @@
   <!--let's see if we should be running the winch or not-->
   <arg name="winch" default="false" />
   <param name="winch_bool" type="bool" value="$(arg winch)" />
-  
+
+  <!--define robot_radius parameter-->
+  <param name="robot_radius" type="double" value="0.0915" />  
+
   <!--start kinect... note if it is already running, the other
       instance will be automatically killed-->
   <include file="$(find openni_camera)/launch/openni_node.launch"/>
