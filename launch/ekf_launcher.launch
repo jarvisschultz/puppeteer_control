@@ -10,6 +10,13 @@
   <!--start kinect... note if it is already running, the other
       instance will be automatically killed-->
   <include file="$(find openni_camera)/launch/openni_node.launch"/>
+
+  <!-- launch rviz if "vis"=true: -->
+  <arg name="vis" default="true" />
+  <group if="$(arg vis)">
+    <node pkg="rviz" type="rviz" respawn="false" name="rviz"
+	  args="-d $(find puppeteer_control)/launch/default_control.vcg" />
+  </group>
  
   <!--first launch the object tracker, checking if we are tracking the
        robot or the system -->
@@ -40,6 +47,5 @@
   <!--launch the filtering node-->
   <node pkg="filtering_node" type="ekf_filter"
 	name="ekf_implementation" output="screen" respawn="true" />
-
 
 </launch>
