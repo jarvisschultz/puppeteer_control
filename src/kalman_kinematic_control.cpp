@@ -17,6 +17,7 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 
@@ -79,7 +80,7 @@ private:
     ros::ServiceClient client;
     ros::Subscriber sub;
     ros::Timer timer;
-    ros::Publisher ref_pub;
+    ros::Publisher ref_pub, path_pub;
     puppeteer_msgs::speed_command srv;
     // puppeteer_msgs::RobotPose pose;
     tf::TransformBroadcaster br;
@@ -91,6 +92,8 @@ private:
     // Controller gains
     float k1, k2, k3;
     float zeta, b;
+    ros::Time base_time;
+    
 
 
 public:
@@ -127,6 +130,7 @@ public:
 			       &KinematicControl::timercb, this);
 	// Define a publisher for publishing the robot's reference pose
 	ref_pub = n_.advertise<nav_msgs::Odometry> ("reference_pose", 100);
+	path_pub = n_.advertise<nav_msgs::Path> ("desired_path", 100);
 	
 	// Send a start flag:
 	send_start_flag();
@@ -160,7 +164,7 @@ public:
 	{
 	    ROS_DEBUG("Subscriber callback triggered");
 	    static double running_time = 0.0;
-	    static ros::Time base_time;
+	    // static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
 	    
 	    if (operating_condition == 0 || operating_condition == 3)
@@ -210,7 +214,9 @@ public:
 		    ROS_DEBUG("Setting Base Time to %f",base_time.toSec());
 
 		    // check if we are running the winch:
-		    check_winch();		    
+		    check_winch();
+
+		    publish_path();
 		}
 		else
 		{
@@ -564,6 +570,27 @@ public:
 	    ros::param::get("winch_bool", winch);
 	    ROS_DEBUG("/winch_bool = %d", winch);	    
 
+	}
+
+    void publish_path(void)
+	{
+	    nav_msgs::Path path;
+	    
+	    path.poses.resize(traj->num);
+	    path.header.frame_id = "robot_odom_pov";
+	    path.header.stamp = base_time;
+
+	    for (unsigned int i=0; i<(traj->num); i++)
+	    {
+		path.poses[i].header.stamp =
+		    base_time+ros::Duration(traj->vals[i][0]);
+		path.poses[i].header.frame_id = "robot_odom_pov";
+		path.poses[i].pose.position.x = traj->vals[i][1];
+		path.poses[i].pose.position.y = traj->vals[i][2];
+		path.poses[i].pose.position.z = 0;
+	    }
+
+	    path_pub.publish(path);
 	}
 };
 
