@@ -539,7 +539,7 @@ public:
 	    // let's set some parameters for the initial pose of the robot:
 	    ros::param::set("/robot_x0", traj->vals[0][1]);
 	    ros::param::set("/robot_z0", traj->vals[0][2]);
-	    ros::param::set("/robot_y0", 2.0);
+	    ros::param::set("/robot_y0", 1.0); // this value is arbitrary!
 	    ros::param::set("/robot_r0", traj->vals[0][5]);
 
 	    double th = atan2(traj->vals[1][1]-traj->vals[0][1],
@@ -612,8 +612,7 @@ public:
 
 	    newname = filename;
 	    newname.resize(newname.size()-4);
-	    newname += "_mass.txt";
-	    if(stat(newname.c_str(), &buf))
+	    newname += "_mass.txt";	    if(stat(newname.c_str(), &buf))
 	    {
 		ROS_INFO("No file describing mass trajectory found");
 		return;
@@ -644,6 +643,11 @@ public:
 		path_m.poses[i].pose.position.z = fromString<double>(line);
 	    }
 	    file.close();
+
+	    // set the mass initial parameters
+	    ros::param::set("/mass_x0", path_m.poses[0].pose.position.x);
+	    ros::param::set("/mass_y0", path_m.poses[0].pose.position.y);
+	    ros::param::set("/mass_z0", path_m.poses[0].pose.position.z);
 	}
 };
 
