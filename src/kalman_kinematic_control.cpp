@@ -58,6 +58,14 @@ template <typename T> int sgn(T val)
     return (val > T(0)) - (val < T(0));
 }       
 
+template<typename T>
+    T fromString(const std::string& s)
+{
+     std::istringstream stream (s);
+     T t;
+     stream >> t;
+     return t;
+}
 //---------------------------------------------------------------------------
 // Class Definitions
 //---------------------------------------------------------------------------
@@ -80,11 +88,11 @@ private:
     ros::ServiceClient client;
     ros::Subscriber sub;
     ros::Timer timer;
-    ros::Publisher ref_pub, path_pub;
+    ros::Publisher ref_pub, mpath_pub, rpath_pub;
     puppeteer_msgs::speed_command srv;
-    // puppeteer_msgs::RobotPose pose;
     tf::TransformBroadcaster br;
     nav_msgs::Odometry ref_pose;
+    nav_msgs::Path path_m, path_r;
     bool start_flag, cal_start_flag, winch;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
     float vd, wd, rdotd;
@@ -92,8 +100,6 @@ private:
     // Controller gains
     float k1, k2, k3;
     float zeta, b;
-    ros::Time base_time;
-    
 
 
 public:
@@ -116,9 +122,6 @@ public:
 	    ros::param::set("winch_bool",false);
 	}
 	
-	// Read in the trajectory:
-	traj = ReadControls(filename);
-
 	// Define service client:
 	client = n_.serviceClient<puppeteer_msgs::speed_command>
 	    ("speed_command");
@@ -130,8 +133,16 @@ public:
 			       &KinematicControl::timercb, this);
 	// Define a publisher for publishing the robot's reference pose
 	ref_pub = n_.advertise<nav_msgs::Odometry> ("reference_pose", 100);
-	path_pub = n_.advertise<nav_msgs::Path> ("desired_path", 100);
-	
+	rpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_robot", 100);
+	mpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_mass", 100);
+
+	// Read in the trajectory:
+	traj = ReadControls(filename);
+	// publish the robot results:
+	set_robot_path();
+	// read mass trajectory if it exists:
+	set_mass_path(filename);
+		
 	// Send a start flag:
 	send_start_flag();
 	
@@ -164,7 +175,7 @@ public:
 	{
 	    ROS_DEBUG("Subscriber callback triggered");
 	    static double running_time = 0.0;
-	    // static ros::Time base_time;
+	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
 	    
 	    if (operating_condition == 0 || operating_condition == 3)
@@ -192,6 +203,10 @@ public:
 		    cal_start_flag = false;
 		}
 		ROS_INFO_THROTTLE(5, "Calibrating...");
+
+		// publish paths
+		mpath_pub.publish(path_m);
+		rpath_pub.publish(path_r);
 	    }
 	    else if (operating_condition == 2)
 	    {
@@ -216,7 +231,9 @@ public:
 		    // check if we are running the winch:
 		    check_winch();
 
-		    publish_path();
+		    // publish paths
+		    mpath_pub.publish(path_m);
+		    rpath_pub.publish(path_r);
 		}
 		else
 		{
@@ -572,25 +589,61 @@ public:
 
 	}
 
-    void publish_path(void)
+    void set_robot_path(void)
 	{
-	    nav_msgs::Path path;
-	    
-	    path.poses.resize(traj->num);
-	    path.header.frame_id = "robot_odom_pov";
-	    path.header.stamp = base_time;
-
+	    path_r.poses.resize(traj->num);
+	    path_r.header.frame_id = "robot_odom_pov";
 	    for (unsigned int i=0; i<(traj->num); i++)
 	    {
-		path.poses[i].header.stamp =
-		    base_time+ros::Duration(traj->vals[i][0]);
-		path.poses[i].header.frame_id = "robot_odom_pov";
-		path.poses[i].pose.position.x = traj->vals[i][1];
-		path.poses[i].pose.position.y = traj->vals[i][2];
-		path.poses[i].pose.position.z = 0;
+		path_r.poses[i].header.frame_id = "robot_odom_pov";
+		path_r.poses[i].pose.position.x = traj->vals[i][1];
+		path_r.poses[i].pose.position.y = traj->vals[i][2];
+		path_r.poses[i].pose.position.z = 0;
 	    }
+	}
 
-	    path_pub.publish(path);
+    void set_mass_path(std::string filename)
+	{
+	    struct stat buf;
+	    std::ifstream file;
+	    std::string line, tempstr;
+	    int num;
+	    std::string newname;
+
+	    newname = filename;
+	    newname.resize(newname.size()-4);
+	    newname += "_mass.txt";
+	    if(stat(newname.c_str(), &buf))
+	    {
+		ROS_INFO("No file describing mass trajectory found");
+		return;
+	    }
+	    ROS_INFO("Reading mass trajectory: %s",newname.c_str());
+	    file.open(newname.c_str(), std::fstream::in);
+
+	    // read num:
+	    file >> line;
+	    file >> num;
+
+	    path_m.poses.resize(num);
+	    path_m.header.frame_id = "optimization_frame";
+
+	    ROS_DEBUG("number of points in mass file = %d",num);
+
+	    for (int i=0; i<num; i++)
+	    {
+	    	getline(file,line,',');
+	    	// path_m.poses[i].header.stamp = temp;
+	    	path_m.poses[i].header.frame_id = "optimization_frame";
+		
+	    	getline(file,line,',');
+		path_m.poses[i].pose.position.x = fromString<double>(line);
+	    	getline(file,line,',');
+		path_m.poses[i].pose.position.y = fromString<double>(line);
+	    	getline(file,line);
+		path_m.poses[i].pose.position.z = fromString<double>(line);
+	    }
+	    file.close();
 	}
 };
 
