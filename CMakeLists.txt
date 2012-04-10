@@ -39,3 +39,4 @@ rosbuild_add_executable(wiimote_control src/wiimote_control.cpp include/wiiuse.h
 target_link_libraries(wiimote_control ${PROJECT_SOURCE_DIR}/lib/libwiiuse.so)
 rosbuild_add_executable(kalman_controller src/kalman_kinematic_control.cpp)
 rosbuild_add_executable(multi_kalman_controller src/multi_kalman_control.cpp)
+rosbuild_add_executable(multi_coordinator src/multi_coordinator.cpp)

@@ -1,0 +1,96 @@
+<launch>
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <!-- ARGUMENT DEFINITIONS -->
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <arg name="winch" default="false" />
+  <arg name="vis" default="true" />
+  <arg name="track" default="multi_robot" />
+  <arg name="file" default="default" />
+  <arg name="dir" default="$(find puppeteer_control)/data/" />
+
+
+
+
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <!-- SET GLOBAL PARAMETERS --> 
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <param name="/winch_bool" type="bool" value="$(arg winch)" />
+  <param name="/number_robots" type="int" value='2' />
+
+
+
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <!-- LAUNCH GLOBAL NODES -->
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <!--start kinect... note if it is already running, the other
+      instance will be automatically killed-->
+  <include file="$(find openni_camera)/launch/openni_node.launch"/>
+
+  <!--launch the object tracker, checking if we are tracking the
+      robot or the system -->
+  <include file="$(find objecttracker_nu)/launch/$(arg track)_tracking.launch"/>
+
+  <!--now let's launch the serial node-->
+  <node pkg="serial_node" type="serial_node" name="serial_node"
+	output="log" required="true" />
+
+  <!--launch the keyboard node-->
+  <node pkg="keyboard_node" type="keyboard_node"
+	name="keyboard_interface" output="screen" respawn="true"
+	launch-prefix="xterm -rv -e" />
+
+  <!-- launch rviz if "vis"=true: -->
+  <group if="$(arg vis)">
+    <node pkg="rviz" type="rviz" respawn="false" name="rviz"
+	  args="-d $(find puppeteer_control)/launch/max_4_robots.vcg" />
+  </group>
+
+  <!-- launch the coordinator node -->
+  <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
+  <!-- 	output="screen" required="true" /> -->
+
+
+
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <!-- LAUNCH ROBOT NODES -->
+  <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+  <!-- robot number 1 -->
+  <group ns="robot_1" >
+    <arg name="index" value="robot_1" />
+    <!--define robot_radius parameter-->
+    <param name="robot_radius" type="double" value="0.0915" />  
+    <!-- set the robot index in this namespace -->
+    <param name="robot_index" type="int" value="1" />    
+    <param name="winch_bool" type="bool" value="$(arg winch)" />
+    <!--now let's launch the puppeteer_control node while passing
+	correct args-->
+    <node pkg="puppeteer_control" type="multi_kalman_controller"
+	  name="$(arg index)_kinematic_controller" output="screen" respawn="false"
+	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
+    <!--launch the filtering node-->
+    <node pkg="filtering_node" type="multi_ekf_filter"
+	  name="$(arg index)_ekf" output="screen" respawn="true" />
+  </group>
+
+
+
+  <!-- robot number 2 -->
+  <group ns="robot_2" >
+    <arg name="index" value="robot_2" />
+    <!--define robot_radius parameter-->
+    <param name="robot_radius" type="double" value="0.0915" />  
+    <!-- set the robot index in this namespace -->
+    <param name="robot_index" type="int" value="3" />
+    <param name="winch_bool" type="bool" value="$(arg winch)" />
+    <!--now let's launch the puppeteer_control node while passing
+	correct args-->
+    <node pkg="puppeteer_control" type="multi_kalman_controller"
+	  name="$(arg index)_kinematic_controller" output="screen" respawn="false"
+	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
+    <!--launch the filtering node-->
+    <node pkg="filtering_node" type="multi_ekf_filter"
+	  name="$(arg index)_ekf" output="screen" respawn="true" />
+  </group>
+
+
+</launch>

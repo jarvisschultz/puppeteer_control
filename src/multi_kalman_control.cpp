@@ -107,11 +107,11 @@ public:
 	ROS_DEBUG("Instantiating KinematicControl Class");
 	// Initialize necessary variables:
 	if(ros::param::has("operating_condition"))
-	    ros::param::set("operating_condition", 0);
+	    ros::param::set("/operating_condition", 0);
 	else
 	{
 	    ROS_WARN("Cannot Find Parameter: operating_condition");
-	    ros::param::set("operating_condition", 0);
+	    ros::param::set("/operating_condition", 0);
 	}
 
 	// check if we are running the winches... if not, let's set
@@ -124,9 +124,9 @@ public:
 	
 	// Define service client:
 	client = n_.serviceClient<puppeteer_msgs::speed_command>
-	    ("speed_command");
+	    ("/speed_command");
 	// Define subscriber:
-	sub = n_.subscribe("/pose_ekf", 1, &KinematicControl::subscriber_cb
+	sub = n_.subscribe("pose_ekf", 1, &KinematicControl::subscriber_cb
 			   , this);
 	// Define a timer and callback for checking system state:
 	timer = n_.createTimer(ros::Duration(0.1),
@@ -507,7 +507,7 @@ public:
 	    file.close();
 	    
 	    // Now we can set DT and the robot_index
-	    ros::param::get("/robot_index", traj->RobotMY);
+	    ros::param::get("robot_index", traj->RobotMY);
 	    traj->DT = traj->vals[1][0]-traj->vals[0][0];
 	    traj->num = num;
 
@@ -537,10 +537,10 @@ public:
 	    traj->vals[num-1][4] = traj->vals[num-3][4];
 
 	    // let's set some parameters for the initial pose of the robot:
-	    ros::param::set("/robot_x0", traj->vals[0][1]);
-	    ros::param::set("/robot_z0", traj->vals[0][2]);
-	    ros::param::set("/robot_y0", 1.0); // this value is arbitrary!
-	    ros::param::set("/robot_r0", traj->vals[0][5]);
+	    ros::param::set("robot_x0", traj->vals[0][1]);
+	    ros::param::set("robot_z0", traj->vals[0][2]);
+	    ros::param::set("robot_y0", 1.0); // this value is arbitrary!
+	    ros::param::set("robot_r0", traj->vals[0][5]);
 
 	    double th = atan2(traj->vals[1][1]-traj->vals[0][1],
 			      traj->vals[1][2]-traj->vals[0][2]);
@@ -548,7 +548,7 @@ public:
 	    if (isnan(th) == 0)
 	    {
 		th = clamp_angle(th);
-		ros::param::set("/robot_th0", th);
+		ros::param::set("robot_th0", th);
 	    }
 	    else
 		ROS_ERROR("Initial angle returned NaN!");
@@ -585,7 +585,7 @@ public:
 		ros::param::set("winch_bool",false);
 	    ROS_DEBUG("Checking winch bool");
 	    ros::param::get("winch_bool", winch);
-	    ROS_DEBUG("/winch_bool = %d", winch);	    
+	    ROS_DEBUG("winch_bool = %d", winch);	    
 
 	}
 
@@ -645,9 +645,9 @@ public:
 	    file.close();
 
 	    // set the mass initial parameters
-	    ros::param::set("/mass_x0", path_m.poses[0].pose.position.x);
-	    ros::param::set("/mass_y0", path_m.poses[0].pose.position.y);
-	    ros::param::set("/mass_z0", path_m.poses[0].pose.position.z);
+	    ros::param::set("mass_x0", path_m.poses[0].pose.position.x);
+	    ros::param::set("mass_y0", path_m.poses[0].pose.position.y);
+	    ros::param::set("mass_z0", path_m.poses[0].pose.position.z);
 	}
 };
 
@@ -710,11 +710,27 @@ void command_line_parser(int argc, char** argv)
 	file = "default.txt";
     }
 
+    // did we spec rflag on command line?
     if (rflag != 1)
-	robot_index = 1;
-
-    ROS_INFO("Setting robot_index to %d",robot_index);
-    ros::param::set("robot_index", robot_index);
+    {
+	// let's see if there is a parameter already
+	if(!ros::param::has("robot_index"))
+	{
+	    // use a default:
+	    robot_index = 1;
+	    ROS_INFO("Setting robot_index to default (%d)",robot_index);
+	    ros::param::set("robot_index", robot_index);
+	}
+	else
+	    ros::param::get("robot_index", robot_index);
+    }
+    else
+    {
+	// since we did spec it, let's set it
+	ros::param::set("robot_index", robot_index);
+    }
+	
+	    
   
     // Get filenames:
     filename = working_dir + file;

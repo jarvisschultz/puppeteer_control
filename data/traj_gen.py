@@ -8,7 +8,7 @@ import pylab as mp
 from math import sin, cos, pi
 
 
-tf = 8.0*pi
+tf = 2.0*pi
 dt = 0.01
 plot_flag = True
 
@@ -21,7 +21,7 @@ def main(fname):
     tvec = np.linspace(0.0, tf, int(tf/dt))
     tref = tvec+offset
 
-    ## Define referenc trajectory:
+    ## Define reference trajectory:
     
     ## xref = (1/(2.0*pi))*tvec
     ## yref = 0.0*np.sin(tvec/2./2.)
@@ -40,12 +40,16 @@ def main(fname):
     ## xref = 0.5*np.sin(tvec/2./2.)
     ## zref = 0.0*tvec
     
-    xref = 0.5*np.cos(tvec/2.)-0.5
-    yref = 0.5*np.sin(tvec/2.)
-    zref = 0.0*tvec
+    ## xref = 0.5*np.cos(tvec/2.)-0.5
+    ## yref = 0.5*np.sin(tvec/2.)
+    ## zref = 0.0*tvec
     ## xref = 1.5-1.5*np.exp(-tvec)
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec
+
+    xref = 0.5*np.cos(tvec/2.)
+    yref = 0.5*np.sin(tvec/2.)
+    zref = 0.0*tvec
 
     vd, wd = get_curvature(tvec,xref,yref)
         
@@ -62,8 +66,8 @@ def main(fname):
     f.close()
 
     ## Now let's copy that file to a new directory:
-    cmd = "cp "+fname+" /home/jarvis/Dropbox/mathematica/TrajectoryGenerator/data/kalman_debugging/"
-    os.system(cmd)
+    ## cmd = "cp "+fname+" /home/jarvis/Dropbox/mathematica/TrajectoryGenerator/data/kalman_debugging/"
+    ## os.system(cmd)
     
     if plot_flag:
         generate_plot(xref, yref, zref, tvec)
