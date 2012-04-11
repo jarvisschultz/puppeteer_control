@@ -28,6 +28,7 @@
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include <Eigen/Core>
+#include <Eigen/Dense>
 
 
 //---------------------------------------------------------------------------
@@ -55,13 +56,14 @@ private:
     bool calibrated_flag;
     unsigned int calibrate_count;
     ros::Time tstamp;
-    std::vector<int> order;
+    std::vector<int> ref_ord;
     int operating_condition;
     double robot_radius;
     tf::TransformListener tf;
     tf::TransformBroadcaster br;
     nav_msgs::Odometry kin_pose[MAX_ROBOTS];
-    puppeteer_msgs::Robots current_bots, prev_bots;
+    puppeteer_msgs::Robots current_bots, prev_bots, start_bots, cal_bots;
+    Eigen::Vector3d cal_pos;
 
 
 public:
@@ -69,16 +71,18 @@ public:
 	ROS_DEBUG("Creating publishers and subscribers");
 	timer = n_.
 	    createTimer(ros::Duration(0.033), &Coordinator::timercb, this);
-	robots_sub = n_.subscribe("/robot_positions", 1,
+	robots_sub = n_.subscribe("robot_positions", 1,
 				  &Coordinator::datacb, this);
 	// get the number of robots
 	if (ros::param::has("/number_robots"))
 	    ros::param::get("/number_robots",nr);
 	else
 	{
+	    ROS_WARN("Number of robots not set...");
 	    ros::param::set("/number_robots", 1);
 	    nr = 1;
 	}
+	
 	for (int j=0; j<nr; j++)
 	{
 	    // create publishers
@@ -88,10 +92,7 @@ public:
 	}
 
 	// get operating condition
-	if (ros::param::has("/operating_condition"))
-	    ros::param::get("/operating_condition", operating_condition);
-	else
-	    ros::param::set("/operating_condition", 0);
+	ros::param::set("/operating_condition", 0);
 
 	// get the size of the robot:
 	if(ros::param::has("/robot_radius"))
@@ -118,42 +119,45 @@ public:
 	for (int i=0; i<nr; i++)
 	    kin_pose[i].pose.covariance = kincov;
 
-
-	ROS_INFO("Starting Coordinator Node");
-
+	return;
     }
 
 
     void datacb(const puppeteer_msgs::Robots &bots)
+    // void datacb(boost::shared_ptr<puppeteer_msgs::Robots const> bots)
 	{
 	    ROS_DEBUG("datacb triggered");
 	    static bool first_flag = true;
 	    puppeteer_msgs::Robots b;
 	    b = bots;
 
+	    tstamp = ros::Time::now();
+	    
 	    // correct the points in bots
 	    b = adjust_for_robot_size(b);
 	    // store the values that we received:
 	    if (first_flag) {
-		current_bots = b;
-		prev_bots = b;
-		first_flag = false;
-		return;
+		ROS_DEBUG("First call!");
+	    	current_bots = b;
+	    	prev_bots = b;
+	    	first_flag = false;
+	    	return;
 	    }
 	    prev_bots = current_bots;
 	    current_bots = b;
 	    // do we need to calibrate?
 	    if ( !calibrated_flag ) {
-		calibrate_routine();
-		return;
+	    	calibrate_routine();
+	    	return;
 	    }
 
 	    // send all relevant transforms
 	    send_frames();
 
-	    // transform the Robots to /optimization_frame
-	    transform_robots();
-	    
+	    // // transform the Robots to /optimization_frame
+	    // transform_robots();
+
+	    ROS_DEBUG("Leaving datacb");
 	    return;
 	}
 	
@@ -190,11 +194,11 @@ public:
 	    
 	    // are we in idle or stop condition?
 	    else if(operating_condition == 0 || operating_condition == 3)
-		ROS_DEBUG("Coordinator node is idle due to operating condition");
+		ROS_DEBUG_THROTTLE(1,"Coordinator node is idle due to operating condition");
 
 	    // are we in emergency stop condition?
 	    else if(operating_condition == 4)
-		ROS_WARN_ONCE("Emergency Stop Requested");
+		ROS_WARN_THROTTLE(1,"Emergency Stop Requested");
 
 	    // otherwise something terrible has happened
 	    else
@@ -203,6 +207,244 @@ public:
 	    calibrated_flag = false;
 	    calibrate_count = 0;
 	    init_ekf_count = 0;
+	    return;
+	}
+    
+
+    void calibrate_routine(void)
+	{
+	    ROS_DEBUG("calibration_routine triggered");
+	    static Eigen::MatrixXd cal_eig(nr,3);
+			
+	    // if this is the first call to the function, let's get
+	    // the starting pose for each of the robots.
+	    if(calibrate_count == 0)
+	    {
+		ROS_DEBUG_THROTTLE(1,"Calibrating...");
+		puppeteer_msgs::Robots r;
+		double tmp;
+		r.robots.resize(nr);
+		for (int j=0; j<nr; j++)
+		{
+		    std::stringstream ss;
+		    ss << "/robot_" << j+1 << "/robot_x0";
+		    ros::param::get(ss.str(), tmp);
+		    r.robots[j].point.x = tmp;
+		    ss << "/robot_" << j+1 << "/robot_y0";
+		    ros::param::get(ss.str(), tmp);
+		    r.robots[j].point.y = tmp;
+		    ss << "/robot_" << j+1 << "/robot_z0";
+		    ros::param::get(ss.str(), tmp);
+		    r.robots[j].point.z = tmp;
+		}
+
+		start_bots = r;
+		
+		// increment counter, and initialize transform values
+		calibrate_count++;
+		cal_pos << 0, 0, 0;
+		for(int i=0; i<cal_eig.rows(); i++) {
+		    cal_eig(i,0) = 0; cal_eig(i,1) = 0; cal_eig(i,2) = 0; }
+		return;
+	    }
+	    // we are in the process of calibrating:
+	    else if (calibrate_count <= NUM_CALIBRATES)
+	    {
+		ROS_DEBUG("summing the data");
+		puppeteer_msgs::Robots sorted_bots;
+		sorted_bots = sort_bots_with_order(&current_bots);
+
+// 		std::cout << "sorted_bots info " << std::endl;
+// 		std::cout << "robot 1: ";
+// 		std::cout << sorted_bots.robots[0].point.x << " "
+// 			  << sorted_bots.robots[0].point.y << " "
+// 			  << sorted_bots.robots[0].point.z << std::endl;
+// 		std::cout << "robot 2: ";
+// 		std::cout << sorted_bots.robots[1].point.x << " "
+// 			  << sorted_bots.robots[1].point.y << " "
+// 			  << sorted_bots.robots[1].point.z << std::endl;
+// 
+		Eigen::Matrix<double, Eigen::Dynamic, 3> sorted_eig;
+		bots_to_eigen(&sorted_eig, &sorted_bots);
+
+		// std::cout << "sorted eig dimensions: " <<
+		//     sorted_eig.rows() << ", " <<sorted_eig.cols() << std::endl;
+		// std::cout << sorted_eig << std::endl;
+		// std::cout << std::endl;
+		
+
+		// now we have the sorted matrix... let's keep on
+		// adding the values:
+		cal_eig += sorted_eig;
+		calibrate_count++;
+	    }
+	    // we are ready to find the transformation:
+	    else
+	    {
+		ROS_DEBUG("Getting transforms");
+		std::cout << "cal_eig " << cal_eig << std::endl;
+		cal_eig /= (double) NUM_CALIBRATES; // average all vectors
+		std::cout << "cal_eig/30 " << cal_eig << std::endl;
+		// get transform for each robot:
+		Eigen::Matrix<double, Eigen::Dynamic, 3> temp_eig;
+		bots_to_eigen(&temp_eig, &start_bots);
+		std::cout << "temp_eig " << temp_eig << std::endl;
+		cal_eig -= temp_eig;
+		std::cout << "cal_eig/30-tmp " << cal_eig << std::endl;
+		// Now find the mean of the transforms:
+		for (int i=0; i<nr; i++)
+		    cal_pos += cal_eig.block<1,3>(i,0);
+		cal_pos /= nr;
+
+		ROS_DEBUG("calibration pose: %f, %f, %f",
+			  cal_pos(0),cal_pos(1),cal_pos(2));
+		calibrated_flag = true;
+		calibrate_count = 0;
+	    }
+	    return;
+	}
+
+    // now that we are calibrated, we are free to send the transforms:
+    void send_frames(void)
+	{
+	    tf::Transform transform;
+
+	    transform.setOrigin(tf::Vector3(cal_pos(0),
+					    cal_pos(1),
+					    cal_pos(2)));
+	    transform.setRotation(tf::Quaternion(0,0,0,1));
+	    br.sendTransform(tf::StampedTransform(transform, tstamp,
+						  "oriented_optimization_frame",
+						  "optimization_frame"));
+
+	    
+	    // Publish /map frame based on robot calibration
+	    transform.setOrigin(tf::Vector3(cal_pos(0),
+					    0,
+					    cal_pos(2)));
+	    transform.setRotation(tf::Quaternion(.707107,0.0,0.0,-0.707107));
+	    br.sendTransform(tf::StampedTransform(transform, tstamp,
+						  "oriented_optimization_frame",
+						  "map"));
+	    
+	    // publish one more frame that is the frame the robot
+	    // calculates its odometry in.
+	    transform.setOrigin(tf::Vector3(0,0,0));
+	    transform.setRotation(tf::Quaternion(1,0,0,0));
+	    br.sendTransform(tf::StampedTransform(transform, tstamp,
+						  "map",
+						  "robot_odom_pov"));
+
+	    // Reset transform values for transforming data from
+	    // Kinect frame into optimization frame
+	    transform.setOrigin(tf::Vector3(cal_pos(0),
+					    cal_pos(1), cal_pos(2)));
+	    transform.setRotation(tf::Quaternion(0,0,0,1));
+
+	    
+	    // // Transform the received point into the actual
+	    // // optimization frame, store the old values, and store the
+	    // // new transformed value
+	    // if (!point.error)
+	    // {
+	    // 	Eigen::Affine3d gwo;
+	    // 	Eigen::Vector3d tmp_point; 
+	    // 	tf::TransformTFToEigen(transform, gwo);
+	    // 	gwo = gwo.inverse();
+	    // 	tmp_point << point.x, point.y, point.z;
+	    // 	tmp_point = gwo*tmp_point;
+
+	    // 	transformed_robot_last = transformed_robot;
+	    // 	transformed_robot.header.frame_id = "optimization_frame";
+	    // 	transformed_robot.header.stamp = tstamp;
+	    // 	transformed_robot.point.x = tmp_point(0);
+	    // 	transformed_robot.point.y = tmp_point(1);
+	    // 	transformed_robot.point.z = tmp_point(2);
+
+
+	    // 	if (first_flag == true)
+	    // 	{
+	    // 	    transformed_robot_last = transformed_robot;
+	    // 	    first_flag = false;
+	    // 	}
+	    // }
+
+	    return;
+	}
+   
+
+    // return a Robots type that has the robots[] field sorted
+    // according to the "order" variable
+    puppeteer_msgs::Robots sort_bots_with_order(puppeteer_msgs::Robots *r)
+	{
+	    ROS_DEBUG("sorting method triggered");
+	    puppeteer_msgs::Robots s;
+	    // let's check if the number of robots in r is the same as
+	    // the number of robots in the system:
+	    if ((int) r->robots.size() != nr)
+	    {
+		ROS_WARN("Cannot rearrange Robots msg "
+			 "according to order parameter");
+		s = *r;
+		return s;
+	    }
+	    
+	    // now we need to order the robots from greatest to least
+	    // in terms of x-position
+	    std::vector<double> pos;
+	    std::vector<int> act_ord;
+	    int keyi=0;
+	    double key=0;
+	    int j=0;
+	    for (j=0; j<nr; j++) {
+		pos.push_back(r->robots[j].point.x);
+		act_ord.push_back(j+1);
+	    }
+
+	    j=0;
+	    for (unsigned int i=1; i<pos.size(); ++i) 
+	    {
+		key= pos[i];
+		keyi = act_ord[i];
+		j = i-1;
+		while((j >= 0) && (pos[j] < key))
+		{
+		    pos[j+1] = pos[j];
+		    act_ord[j+1] = act_ord[j];
+		    j -= 1;
+		}
+		pos[j+1]=key;
+		act_ord[j+1]=keyi;
+	    }
+	    // now we can use the mapping from actual order to
+	    // reference order to re-arrange the robots
+	    s.header = r->header;
+	    s.number = r->number;
+	    s.robots.resize(nr);
+	    for (j=0; j<nr; j++)
+		s.robots[ref_ord[j]-1] = r->robots[act_ord[j]-1];
+	    return s;
+	}
+
+    
+// convert a Robots message to an Eigen matrix
+    void bots_to_eigen(Eigen::Matrix<double, Eigen::Dynamic, 3> *e,
+		       puppeteer_msgs::Robots *r)
+	{
+	    // first we size the matrix:
+	    int num = (int) r->robots.size();
+	    e->resize(num, Eigen::NoChange);
+	    
+	    ROS_DEBUG("Conversion to Eigen detected %d robots",num);
+	    // now we can fill in the info:
+	    int j=0;
+	    for (j=0; j<num; j++)
+	    {
+		(*e)(j,0) = r->robots[j].point.x;
+		(*e)(j,1) = r->robots[j].point.y;
+		(*e)(j,2) = r->robots[j].point.z;
+	    }
+
 	    return;
 	}
 
@@ -228,7 +470,7 @@ public:
 		}
 
 		pos.push_back(tmp);		    
-		order.push_back(j+1);
+		ref_ord.push_back(j+1);
 	    }
 
 	    // now we can sort the stuff
@@ -238,16 +480,16 @@ public:
 	    for (unsigned int i=1; i<pos.size(); ++i) 
 	    {
 		key= pos[i];
-		keyi = order[i];
+		keyi = ref_ord[i];
 		j = i-1;
 		while((j >= 0) && (pos[j] < key))
 		{
 		    pos[j+1] = pos[j];
-		    order[j+1] = order[j];
+		    ref_ord[j+1] = ref_ord[j];
 		    j -= 1;
 		}
 		pos[j+1]=key;
-		order[j+1]=keyi;
+		ref_ord[j+1]=keyi;
 	    }
 
 	    return false;

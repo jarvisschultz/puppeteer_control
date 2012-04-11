@@ -46,8 +46,8 @@
   </group>
 
   <!-- launch the coordinator node -->
-  <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
-  <!-- 	output="screen" required="true" /> -->
+  <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
+  	output="screen" required="true" />
 
 
 
