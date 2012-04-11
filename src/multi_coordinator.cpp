@@ -58,7 +58,7 @@ private:
     ros::Time tstamp;
     std::vector<int> ref_ord;
     int operating_condition;
-    double robot_radius;
+    std::vector<double> robot_radius;
     tf::TransformListener tf;
     tf::TransformBroadcaster br;
     nav_msgs::Odometry kin_pose[MAX_ROBOTS];
@@ -91,16 +91,22 @@ public:
 	    robots_pub[j] = n_.advertise<nav_msgs::Odometry>(ss.str(), 1);
 	}
 
-	// get operating condition
+	// set operating condition to idle
 	ros::param::set("/operating_condition", 0);
 
 	// get the size of the robot:
-	if(ros::param::has("/robot_radius"))
-	    ros::param::get("/robot_radius", robot_radius);
-	else
+	for (int j=0; j<nr; j++)
 	{
-	    robot_radius = DEFAULT_RADIUS;
-	    ros::param::set("/robot_radius", robot_radius);
+	    std::stringstream ss;
+	    double tmp = 0;
+	    ss << "/robot_" << j+1 << "/robot_radius";
+	    if(ros::param::has(ss.str()))
+	    {
+		ros::param::get(ss.str(), tmp);
+		robot_radius.push_back(tmp);
+	    }
+	    else
+		robot_radius.push_back( DEFAULT_RADIUS );	    
 	}
 
 	// setup default values:
@@ -228,12 +234,15 @@ public:
 		    std::stringstream ss;
 		    ss << "/robot_" << j+1 << "/robot_x0";
 		    ros::param::get(ss.str(), tmp);
+		    ss.str(""); ss.clear();
 		    r.robots[j].point.x = tmp;
 		    ss << "/robot_" << j+1 << "/robot_y0";
 		    ros::param::get(ss.str(), tmp);
+		    ss.str(""); ss.clear();
 		    r.robots[j].point.y = tmp;
 		    ss << "/robot_" << j+1 << "/robot_z0";
 		    ros::param::get(ss.str(), tmp);
+		    ss.str(""); ss.clear();
 		    r.robots[j].point.z = tmp;
 		}
 
@@ -263,16 +272,39 @@ public:
 	    else
 	    {
 		ROS_DEBUG("Getting transforms");
+		std::cout << "cal_eig: " << std::endl;
+		std::cout << cal_eig;
+		std::cout << std::endl;
 		cal_eig /= (double) NUM_CALIBRATES; // average all vectors
+		
+ 		std::cout << "cal_eig/30: " << std::endl;
+		std::cout << cal_eig;
+		std::cout << std::endl;
+		
 		// get transform for each robot:
 		Eigen::Matrix<double, Eigen::Dynamic, 3> temp_eig;
 		bots_to_eigen(&temp_eig, &start_bots);
-		cal_eig -= temp_eig;
+
+		std::cout << "temp_eig: " << std::endl;
+		std::cout << temp_eig;
+		std::cout << std::endl;
+		
+		cal_eig = temp_eig-cal_eig;
+
+		std::cout << "cal_eig_final: " << std::endl;
+		std::cout << cal_eig;
+		std::cout << std::endl;
+		
 		// Now find the mean of the transforms:
 		for (int i=0; i<nr; i++)
 		    cal_pos += cal_eig.block<1,3>(i,0);
 		cal_pos /= nr;
+		cal_pos = -1.0*cal_pos;
 
+		std::cout << "cal_pos: " << std::endl;
+		std::cout << cal_pos;
+		std::cout << std::endl;
+		
 		ROS_DEBUG("calibration pose: %f, %f, %f",
 			  cal_pos(0),cal_pos(1),cal_pos(2));
 		calibrated_flag = true;
@@ -442,7 +474,8 @@ public:
 		if (ros::param::has(ss.str()))
 		    ros::param::get(ss.str(), tmp);
 		else {
-		    ROS_WARN_THROTTLE(1, "Cannot determine ordering!");
+		    ROS_ERROR_THROTTLE(1, "Cannot determine ordering!");
+		    exit(1);
 		    return true;
 		}
 
@@ -571,7 +604,7 @@ public:
 		// now turn it into a unit vector:
 		ur = ur/ur.norm();
 		// now we can correct the values of point
-		ur = ur*robot_radius;
+		ur = ur*robot_radius[j];
 	    
 		point.robots[j].point.x = point.robots[j].point.x+ur(0);
 		point.robots[j].point.y = point.robots[j].point.y+ur(1);
