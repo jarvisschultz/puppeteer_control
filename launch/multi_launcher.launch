@@ -34,11 +34,6 @@
   <node pkg="serial_node" type="serial_node" name="serial_node"
 	output="log" required="true" />
 
-  <!--launch the keyboard node-->
-  <node pkg="keyboard_node" type="keyboard_node"
-	name="keyboard_interface" output="screen" respawn="true"
-	launch-prefix="xterm -rv -e" />
-
   <!-- launch rviz if "vis"=true: -->
   <group if="$(arg vis)">
     <node pkg="rviz" type="rviz" respawn="false" name="rviz"
@@ -47,7 +42,7 @@
 
   <!-- launch the coordinator node -->
   <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
-  	output="screen" respawn="true"/>
+  	output="screen" required="true"/>
 
 
 
@@ -92,5 +87,11 @@
 	  name="$(arg index)_ekf" output="screen" respawn="true" />
   </group>
 
+
+
+  <!--launch the keyboard node-->
+  <node pkg="keyboard_node" type="keyboard_node"
+	name="keyboard_interface" output="screen" respawn="true"
+	launch-prefix="xterm -rv -e" />
 
 </launch>

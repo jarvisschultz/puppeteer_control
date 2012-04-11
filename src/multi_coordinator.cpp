@@ -53,7 +53,7 @@ private:
     ros::Publisher robots_pub[MAX_ROBOTS];
     ros::Timer timer;
     int nr;
-    bool calibrated_flag;
+    bool calibrated_flag, gen_flag;
     unsigned int calibrate_count;
     ros::Time tstamp;
     std::vector<int> ref_ord;
@@ -170,7 +170,6 @@ public:
 
     void timercb(const ros::TimerEvent& e)
 	{
-	    static bool gen_flag = true;
 	    static unsigned int init_ekf_count = 0;
 	    
 	    if (gen_flag)
@@ -220,7 +219,7 @@ public:
 	{
 	    ROS_DEBUG("calibration_routine triggered");
 	    static Eigen::MatrixXd cal_eig(nr,3);
-			
+
 	    // if this is the first call to the function, let's get
 	    // the starting pose for each of the robots.
 	    if(calibrate_count == 0)
@@ -272,39 +271,19 @@ public:
 	    else
 	    {
 		ROS_DEBUG("Getting transforms");
-		std::cout << "cal_eig: " << std::endl;
-		std::cout << cal_eig;
-		std::cout << std::endl;
 		cal_eig /= (double) NUM_CALIBRATES; // average all vectors
-		
- 		std::cout << "cal_eig/30: " << std::endl;
-		std::cout << cal_eig;
-		std::cout << std::endl;
 		
 		// get transform for each robot:
 		Eigen::Matrix<double, Eigen::Dynamic, 3> temp_eig;
 		bots_to_eigen(&temp_eig, &start_bots);
-
-		std::cout << "temp_eig: " << std::endl;
-		std::cout << temp_eig;
-		std::cout << std::endl;
-		
 		cal_eig = temp_eig-cal_eig;
 
-		std::cout << "cal_eig_final: " << std::endl;
-		std::cout << cal_eig;
-		std::cout << std::endl;
-		
 		// Now find the mean of the transforms:
 		for (int i=0; i<nr; i++)
 		    cal_pos += cal_eig.block<1,3>(i,0);
 		cal_pos /= nr;
 		cal_pos = -1.0*cal_pos;
 
-		std::cout << "cal_pos: " << std::endl;
-		std::cout << cal_pos;
-		std::cout << std::endl;
-		
 		ROS_DEBUG("calibration pose: %f, %f, %f",
 			  cal_pos(0),cal_pos(1),cal_pos(2));
 		calibrated_flag = true;
@@ -467,6 +446,7 @@ public:
 	    // the lowest
 	    std::vector<double> pos;
 	    double tmp;
+	    ref_ord.clear();
 	    for (int j=0; j<nr; j++)
 	    {
 		std::stringstream ss;
@@ -474,8 +454,7 @@ public:
 		if (ros::param::has(ss.str()))
 		    ros::param::get(ss.str(), tmp);
 		else {
-		    ROS_ERROR_THROTTLE(1, "Cannot determine ordering!");
-		    exit(1);
+		    ROS_WARN_THROTTLE(1, "Cannot determine ordering!");
 		    return true;
 		}
 
@@ -487,6 +466,7 @@ public:
 	    int keyi=0;
 	    double key=0;
 	    int j=0;
+	    
 	    for (unsigned int i=1; i<pos.size(); ++i) 
 	    {
 		key= pos[i];
