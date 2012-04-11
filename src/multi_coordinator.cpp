@@ -157,7 +157,6 @@ public:
 	    // // transform the Robots to /optimization_frame
 	    // transform_robots();
 
-	    ROS_DEBUG("Leaving datacb");
 	    return;
 	}
 	
@@ -253,26 +252,8 @@ public:
 		ROS_DEBUG("summing the data");
 		puppeteer_msgs::Robots sorted_bots;
 		sorted_bots = sort_bots_with_order(&current_bots);
-
-// 		std::cout << "sorted_bots info " << std::endl;
-// 		std::cout << "robot 1: ";
-// 		std::cout << sorted_bots.robots[0].point.x << " "
-// 			  << sorted_bots.robots[0].point.y << " "
-// 			  << sorted_bots.robots[0].point.z << std::endl;
-// 		std::cout << "robot 2: ";
-// 		std::cout << sorted_bots.robots[1].point.x << " "
-// 			  << sorted_bots.robots[1].point.y << " "
-// 			  << sorted_bots.robots[1].point.z << std::endl;
-// 
 		Eigen::Matrix<double, Eigen::Dynamic, 3> sorted_eig;
 		bots_to_eigen(&sorted_eig, &sorted_bots);
-
-		// std::cout << "sorted eig dimensions: " <<
-		//     sorted_eig.rows() << ", " <<sorted_eig.cols() << std::endl;
-		// std::cout << sorted_eig << std::endl;
-		// std::cout << std::endl;
-		
-
 		// now we have the sorted matrix... let's keep on
 		// adding the values:
 		cal_eig += sorted_eig;
@@ -282,15 +263,11 @@ public:
 	    else
 	    {
 		ROS_DEBUG("Getting transforms");
-		std::cout << "cal_eig " << cal_eig << std::endl;
 		cal_eig /= (double) NUM_CALIBRATES; // average all vectors
-		std::cout << "cal_eig/30 " << cal_eig << std::endl;
 		// get transform for each robot:
 		Eigen::Matrix<double, Eigen::Dynamic, 3> temp_eig;
 		bots_to_eigen(&temp_eig, &start_bots);
-		std::cout << "temp_eig " << temp_eig << std::endl;
 		cal_eig -= temp_eig;
-		std::cout << "cal_eig/30-tmp " << cal_eig << std::endl;
 		// Now find the mean of the transforms:
 		for (int i=0; i<nr; i++)
 		    cal_pos += cal_eig.block<1,3>(i,0);
