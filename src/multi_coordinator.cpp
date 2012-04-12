@@ -189,19 +189,8 @@ public:
 
 	    // If we got here, we are calibrated.  That means we can
 	    // sort robots based on previous locations
-	    std::cout << "prev_bots_sorted(X) = "
-		      << prev_bots_sorted.robots[0].point.x << " " 
-		      << prev_bots_sorted.robots[1].point.x << std::endl;
-	    std::cout << "current_bots(X) = "
-		      << current_bots.robots[0].point.x << " " 
-		      << current_bots.robots[1].point.x << std::endl;
-	    
 	    current_bots_sorted = associate_robots(&current_bots, &prev_bots_sorted);
 	    prev_bots_sorted = current_bots_sorted;
-
-	    std::cout << "sorted_bots(X) = "
-		      << current_bots_sorted.robots[0].point.x << " " 
-		      << current_bots_sorted.robots[1].point.x << std::endl << std::endl;
 
 	    return;
 	}
@@ -561,19 +550,12 @@ public:
 
 	    // now find the entry in dist that has the minimum value:
 	    int key = find_minimum_index(dist);
-	    std::cout << "dist = " << dist(0) << " "  << dist(1)
-		      << "\t key = " << key << std::endl;
-
 	    // now, use the mapping defined by key to fill out s:
 	    s.header = c->header;
 	    s.number = nr;
 	    for (int i=0; i<nr; i++)
-	    {
-		std::cout << "tab[key][i] = " << tab[key][i]
-			  << "\tc->robots = " << c->robots[tab[key][i]-1].point.x
-			  << std::endl;
 		s.robots[i] = c->robots[tab[key][i]-1];
-	    }
+
 	    return s;
 	}
 
