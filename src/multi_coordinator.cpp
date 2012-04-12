@@ -125,6 +125,7 @@ public:
 	}
 
 	// setup default values:
+	gen_flag = true;
 	calibrated_flag = false;
 	tstamp = ros::Time::now();
 	    
@@ -148,6 +149,7 @@ public:
 	for (int j=0; j<height; j++) 
 	    tab[j] = new int[nr];
 	generate_perm_table(nr, tab);
+
 
 	return;
     }
@@ -550,6 +552,7 @@ public:
 
 	    // now find the entry in dist that has the minimum value:
 	    int key = find_minimum_index(dist);
+
 	    // now, use the mapping defined by key to fill out s:
 	    s.header = c->header;
 	    s.number = nr;
@@ -766,6 +769,10 @@ void generate_perm_table(int num, int **tab)
     // build permutations and add to tab
     permute(1, num, dir, perm, permi, tab);
 
+    delete [] dir;
+    delete [] perm;
+    delete [] permi;
+    
     return;    
 }
 
