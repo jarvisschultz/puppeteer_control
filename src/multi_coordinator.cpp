@@ -143,6 +143,10 @@ public:
 	for (int i=0; i<nr; i++)
 	    kin_pose[i].pose.covariance = kincov;
 
+	// initialize the size of the sorted bots messages:
+	current_bots_sorted.robots.resize(nr);
+	prev_bots_sorted.robots.resize(nr);
+
 	// allocate memory for the permuatation table:
 	height = 1;
 	for (int j=1; j<=nr; j++)
@@ -194,8 +198,47 @@ public:
 
 	    // If we got here, we are calibrated.  That means we can
 	    // sort robots based on previous locations
-	    current_bots_sorted = associate_robots(&current_bots, &prev_bots_sorted);
-	    prev_bots_sorted = current_bots_sorted;
+	    puppeteer_msgs::Robots tmp;
+	    tmp.robots.resize(nr);
+
+	    // std::cout << " current_bots = " << current_bots.robots.size();
+	    // std::cout << " current_bots_sorted = " << current_bots_sorted.robots.size();
+	    // std::cout << " prev_bots = " << prev_bots.robots.size();
+	    // std::cout << " prev_bots_sorted = " << prev_bots_sorted.robots.size();
+	    // std::cout << " tmp size = " << tmp.robots.size();
+	    // std::cout << std::endl;
+
+	    tmp = current_bots_sorted;
+	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
+	    prev_bots_sorted = tmp;
+
+	    // std::cout << "prev " << i+1 << " = " << std::endl
+	    // 	      << prev_bots_sorted.robots[i].point.x << " "
+	    // 	      << prev_bots_sorted.robots[i].point.y << " "
+	    // 	      << prev_bots_sorted.robots[i].point.z << std::endl;
+
+
+	    // std::cout << "tmp " << i+1 << " = " << std::endl
+	    // 	      << tmp.robots[i].point.x << " "
+	    // 	      << tmp.robots[i].point.y << " "
+	    // 	      << tmp.robots[i].point.z << std::endl;
+
+	    // std::cout << "current (new) " << i+1 << " = " << std::endl
+	    // 	      << current_bots_sorted.robots[i].point.x << " "
+	    // 	      << current_bots_sorted.robots[i].point.y << " "
+	    // 	      << current_bots_sorted.robots[i].point.z << std::endl;
+
+	    // std::cout << "prev (new) " << i+1 << " = " << std::endl
+	    // 	      << prev_bots_sorted.robots[i].point.x << " "
+	    // 	      << prev_bots_sorted.robots[i].point.y << " "
+	    // 	      << prev_bots_sorted.robots[i].point.z << std::endl;
+
+	    // std::cout << "current (orig)" << i+1 << " = " << std::endl
+	    // 	      << current_bots_sorted.robots[i].point.x << " "
+	    // 	      << current_bots_sorted.robots[i].point.y << " "
+	    // 	      << current_bots_sorted.robots[i].point.z << std::endl;
+
+	    // std::cout << std::endl;
 
 	    return;
 	}
@@ -253,6 +296,7 @@ public:
 	    ROS_DEBUG("calibration_routine triggered");
 	    static Eigen::MatrixXd cal_eig(nr,3);
 	    puppeteer_msgs::Robots sorted_bots;
+	    sorted_bots.robots.resize(nr);
 		
 	    // if this is the first call to the function, let's get
 	    // the starting pose for each of the robots.
@@ -361,7 +405,7 @@ public:
 	    br.sendTransform(tf::StampedTransform(transform, tstamp,
 						  "map",
 						  "robot_odom_pov"));
-
+	    ROS_DEBUG("frames sent");
 	    return;
 	}
    
@@ -495,30 +539,37 @@ public:
     // message has the same data as the current message, but it is
     // sorted according to the last message order.
     puppeteer_msgs::Robots associate_robots(
-	puppeteer_msgs::Robots *c,
-	puppeteer_msgs::Robots *l)
+	puppeteer_msgs::Robots c,
+	puppeteer_msgs::Robots l)
 	{
 	    ROS_DEBUG("Attempting data association problem");
 	    puppeteer_msgs::Robots s;
 	    s.robots.resize(nr);
 
+	    ROS_DEBUG("Filling in missing points");
 	    // first let's fill in the current Robots message that may
 	    // be missing data
 	    double def = 10000.0;
 	    geometry_msgs::PointStamped err_pt;
-	    err_pt.header = l->robots[0].header;
+	    err_pt.header = c.robots[0].header;
 	    err_pt.point.x = def;
 	    err_pt.point.y = def;
 	    err_pt.point.z = def;
-	    for (int i=0; i<(nr- (int) c->robots.size()); i++)
-		c->robots.push_back(err_pt);
+	    for (int i=0; i<(nr- (int) c.robots.size()); i++)
+		c.robots.push_back(err_pt);
 
+	    // std::cout << " current size = " << c.robots.size();
+	    // std::cout << " last size = " << l.robots.size();
+	    // std::cout << std::endl;
+ 	    
 	    // now for each permutation, we can calculate a norm:
 	    Eigen::Matrix<double, Eigen::Dynamic, 3> bot_eig, clust_eig;
-	    bots_to_eigen(&bot_eig, l);
-	    bots_to_eigen(&clust_eig, c);
+	    ROS_DEBUG("Converting bots to eig");
+	    bots_to_eigen(&bot_eig, &l);
+	    bots_to_eigen(&clust_eig, &c);
 	    Eigen::VectorXd dist(height);
 	    double err = 0;
+	    ROS_DEBUG("Testing all permutations");
 	    for (int i=0; i<height; i++)
 	    {
 		err = 0;
@@ -531,14 +582,15 @@ public:
 		dist(i) = err;
 	    }
 
+	    ROS_DEBUG("Finding the minimum");
 	    // now find the entry in dist that has the minimum value:
 	    int key = find_minimum_index(dist);
 
 	    // now, use the mapping defined by key to fill out s:
-	    s.header = c->header;
+	    s.header = c.header;
 	    s.number = nr;
 	    for (int i=0; i<nr; i++)
-		s.robots[i] = c->robots[tab[key][i]-1];
+		s.robots[i] = c.robots[tab[key][i]-1];
 
 	    return s;
 	}
@@ -562,8 +614,20 @@ public:
     void process_robots(void)
 	{
 	    for (int i=0; i<nr; i++)
+	    {
 		send_kinect_estimate(current_bots_sorted.robots[i],
 				     prev_bots_sorted.robots[i], i);
+		// std::cout << "current" << i+1 << " = " << std::endl
+		// 	  << current_bots_sorted.robots[i].point.x << " "
+		// 	  << current_bots_sorted.robots[i].point.y << " "
+		// 	  << current_bots_sorted.robots[i].point.z << std::endl;
+		// std::cout << "previous" << i+1 << " = " << std::endl
+		// 	  << prev_bots_sorted.robots[i].point.x << " "
+		// 	  << prev_bots_sorted.robots[i].point.y << " "
+		// 	  << prev_bots_sorted.robots[i].point.z << std::endl;
+		// std::cout << std::endl;
+	    }
+	    // std::cout << std::endl;
 	    return;
 	}
 	
@@ -575,6 +639,8 @@ public:
     void send_kinect_estimate(geometry_msgs::PointStamped pt,
 			      geometry_msgs::PointStamped ptlast, int index)
 	{
+	    ROS_DEBUG("send_kinect_estimate triggered");
+
 	    Eigen::Affine3d gwo;
 	    Eigen::Vector3d tmp_point; 
 	    tf::Transform transform;
@@ -607,7 +673,7 @@ public:
 	    transptlast.point.y = tmp_point(1);
 	    transptlast.point.z = tmp_point(2);
 	    
-
+	    ROS_DEBUG("Done transforming PointStamped messages");
 	    // Let's first get the transform from /optimization_frame
 	    // to /map
 	    tf::StampedTransform trans_stamped;
@@ -630,7 +696,7 @@ public:
 	    // pose
 	    std::stringstream ss;
 	    ss << "base_footprint_kinect_robot_" << index;
-	    kin_pose[index].header.stamp = tstamp;
+	    kin_pose[index].header.stamp = ros::Time::now();
 	    kin_pose[index].header.frame_id = "map";
 	    kin_pose[index].child_frame_id = ss.str();
 	    tmp.point.z = 0.0;
@@ -643,15 +709,18 @@ public:
 	    			     transpt.point.z-
 	    			     transptlast.point.z);
 	    	theta = clamp_angle(theta-M_PI/2.0);
+		ROS_DEBUG("Calculated angle = %f",theta);					  
 	    }
 	    else
 	    {
 	    	theta = robot_start_ori[index];
-	    	theta = clamp_angle(-theta); 
+	    	theta = clamp_angle(-theta);
+		ROS_DEBUG("predetermined angle = %f",theta);
 	    }
 	    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
 	    kin_pose[index].pose.pose.orientation = quat;				 
-	    
+	    ROS_DEBUG("Done filling in Odometry message");
+
 	    // Now let's publish the estimated pose as a
 	    // nav_msgs/Odometry message on a topic called /vo
 	    robots_pub[index].publish(kin_pose[index]);

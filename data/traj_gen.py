@@ -8,7 +8,7 @@ import pylab as mp
 from math import sin, cos, pi
 
 
-tf = 2.0*pi
+tf = 8.0*pi
 dt = 0.01
 plot_flag = True
 
@@ -47,8 +47,8 @@ def main(fname):
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec
 
-    xref = 0.5*np.cos(tvec/2.)
-    yref = 0.5*np.sin(tvec/2.)
+    xref = 0.5*np.cos(tvec/2.+np.pi)
+    yref = 0.5*np.sin(tvec/2.+np.pi)
     zref = 0.0*tvec
 
     vd, wd = get_curvature(tvec,xref,yref)

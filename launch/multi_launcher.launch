@@ -55,7 +55,7 @@
     <!--define robot_radius parameter-->
     <param name="robot_radius" type="double" value="0.0915" />  
     <!-- set the robot index in this namespace -->
-    <param name="robot_index" type="int" value="1" />    
+    <param name="robot_index" type="int" value="2" />    
     <param name="winch_bool" type="bool" value="$(arg winch)" />
     <!--now let's launch the puppeteer_control node while passing
 	correct args-->
@@ -72,19 +72,19 @@
   <!-- robot number 2 -->
   <group ns="robot_2" >
     <arg name="index" value="robot_2" />
-    <!--define robot_radius parameter-->
-    <param name="robot_radius" type="double" value="0.0915" />  
+    <!-- define robot_radius parameter -->
+    <param name="robot_radius" type="double" value="0.0915" />
     <!-- set the robot index in this namespace -->
     <param name="robot_index" type="int" value="3" />
     <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!--now let's launch the puppeteer_control node while passing
-	correct args-->
+    <!-- now let's launch the puppeteer_control node while passing -->
+    <!-- 	correct args -->
     <node pkg="puppeteer_control" type="multi_kalman_controller"
-	  name="$(arg index)_kinematic_controller" output="screen" respawn="false"
-	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <!--launch the filtering node-->
+    	  name="$(arg index)_kinematic_controller" output="screen" respawn="false"
+    	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
+    <!-- launch the filtering node -->
     <node pkg="filtering_node" type="multi_ekf_filter"
-	  name="$(arg index)_ekf" output="screen" respawn="true" />
+    	  name="$(arg index)_ekf" output="screen" respawn="true" />
   </group>
 
 

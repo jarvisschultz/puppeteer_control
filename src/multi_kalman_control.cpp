@@ -545,7 +545,7 @@ public:
 
 	    if (isnan(th) == 0)
 	    {
-		th = clamp_angle(th);
+		th = clamp_angle(th+M_PI/2.0);
 		ros::param::set("robot_th0", th);
 	    }
 	    else
