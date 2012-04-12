@@ -200,45 +200,9 @@ public:
 	    // sort robots based on previous locations
 	    puppeteer_msgs::Robots tmp;
 	    tmp.robots.resize(nr);
-
-	    // std::cout << " current_bots = " << current_bots.robots.size();
-	    // std::cout << " current_bots_sorted = " << current_bots_sorted.robots.size();
-	    // std::cout << " prev_bots = " << prev_bots.robots.size();
-	    // std::cout << " prev_bots_sorted = " << prev_bots_sorted.robots.size();
-	    // std::cout << " tmp size = " << tmp.robots.size();
-	    // std::cout << std::endl;
-
 	    tmp = current_bots_sorted;
 	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
 	    prev_bots_sorted = tmp;
-
-	    // std::cout << "prev " << i+1 << " = " << std::endl
-	    // 	      << prev_bots_sorted.robots[i].point.x << " "
-	    // 	      << prev_bots_sorted.robots[i].point.y << " "
-	    // 	      << prev_bots_sorted.robots[i].point.z << std::endl;
-
-
-	    // std::cout << "tmp " << i+1 << " = " << std::endl
-	    // 	      << tmp.robots[i].point.x << " "
-	    // 	      << tmp.robots[i].point.y << " "
-	    // 	      << tmp.robots[i].point.z << std::endl;
-
-	    // std::cout << "current (new) " << i+1 << " = " << std::endl
-	    // 	      << current_bots_sorted.robots[i].point.x << " "
-	    // 	      << current_bots_sorted.robots[i].point.y << " "
-	    // 	      << current_bots_sorted.robots[i].point.z << std::endl;
-
-	    // std::cout << "prev (new) " << i+1 << " = " << std::endl
-	    // 	      << prev_bots_sorted.robots[i].point.x << " "
-	    // 	      << prev_bots_sorted.robots[i].point.y << " "
-	    // 	      << prev_bots_sorted.robots[i].point.z << std::endl;
-
-	    // std::cout << "current (orig)" << i+1 << " = " << std::endl
-	    // 	      << current_bots_sorted.robots[i].point.x << " "
-	    // 	      << current_bots_sorted.robots[i].point.y << " "
-	    // 	      << current_bots_sorted.robots[i].point.z << std::endl;
-
-	    // std::cout << std::endl;
 
 	    return;
 	}
@@ -558,10 +522,6 @@ public:
 	    for (int i=0; i<(nr- (int) c.robots.size()); i++)
 		c.robots.push_back(err_pt);
 
-	    // std::cout << " current size = " << c.robots.size();
-	    // std::cout << " last size = " << l.robots.size();
-	    // std::cout << std::endl;
- 	    
 	    // now for each permutation, we can calculate a norm:
 	    Eigen::Matrix<double, Eigen::Dynamic, 3> bot_eig, clust_eig;
 	    ROS_DEBUG("Converting bots to eig");
@@ -617,17 +577,7 @@ public:
 	    {
 		send_kinect_estimate(current_bots_sorted.robots[i],
 				     prev_bots_sorted.robots[i], i);
-		// std::cout << "current" << i+1 << " = " << std::endl
-		// 	  << current_bots_sorted.robots[i].point.x << " "
-		// 	  << current_bots_sorted.robots[i].point.y << " "
-		// 	  << current_bots_sorted.robots[i].point.z << std::endl;
-		// std::cout << "previous" << i+1 << " = " << std::endl
-		// 	  << prev_bots_sorted.robots[i].point.x << " "
-		// 	  << prev_bots_sorted.robots[i].point.y << " "
-		// 	  << prev_bots_sorted.robots[i].point.z << std::endl;
-		// std::cout << std::endl;
 	    }
-	    // std::cout << std::endl;
 	    return;
 	}
 	
