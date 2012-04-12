@@ -79,7 +79,7 @@ private:
     puppeteer_msgs::Robots current_bots_sorted, prev_bots_sorted;
     Eigen::Vector3d cal_pos;
     int **tab;
-
+    int height;
 
 public:
     Coordinator() {
@@ -141,7 +141,7 @@ public:
 	    kin_pose[i].pose.covariance = kincov;
 
 	// allocate memory for the permuatation table:
-	int height = 1;
+	height = 1;
 	for (int j=1; j<=nr; j++)
 	    height *= j;
 	tab = new int*[height];
@@ -189,7 +189,19 @@ public:
 
 	    // If we got here, we are calibrated.  That means we can
 	    // sort robots based on previous locations
+	    std::cout << "prev_bots_sorted(X) = "
+		      << prev_bots_sorted.robots[0].point.x << " " 
+		      << prev_bots_sorted.robots[1].point.x << std::endl;
+	    std::cout << "current_bots(X) = "
+		      << current_bots.robots[0].point.x << " " 
+		      << current_bots.robots[1].point.x << std::endl;
+	    
 	    current_bots_sorted = associate_robots(&current_bots, &prev_bots_sorted);
+	    prev_bots_sorted = current_bots_sorted;
+
+	    std::cout << "sorted_bots(X) = "
+		      << current_bots_sorted.robots[0].point.x << " " 
+		      << current_bots_sorted.robots[1].point.x << std::endl << std::endl;
 
 	    return;
 	}
@@ -518,45 +530,50 @@ public:
 	    puppeteer_msgs::Robots s;
 	    s.robots.resize(nr);
 
-	    // for now, let's assume that l has the same size as the
-	    // number of robots.  we can do this because we are always
-	    // going to return a full-sized version from this function
-	    // additionally, the other sorting function doesn't even
-	    // get called if we don't have a full-size message.
+	    // first let's fill in the current Robots message that may
+	    // be missing data
+	    double def = 10000.0;
+	    geometry_msgs::PointStamped err_pt;
+	    err_pt.header = l->robots[0].header;
+	    err_pt.point.x = def;
+	    err_pt.point.y = def;
+	    err_pt.point.z = def;
+	    for (int i=0; i<(nr- (int) c->robots.size()); i++)
+		c->robots.push_back(err_pt);
 
-	    int num_new = (int) c->robots.size();
-	    Eigen::VectorXd min_dist(nr);
-	    // so now perform the matchup:
-	    for (int i=0; i<nr; i++)
+	    // now for each permutation, we can calculate a norm:
+	    Eigen::Matrix<double, Eigen::Dynamic, 3> bot_eig, clust_eig;
+	    bots_to_eigen(&bot_eig, l);
+	    bots_to_eigen(&clust_eig, c);
+	    Eigen::VectorXd dist(height);
+	    double err = 0;
+	    for (int i=0; i<height; i++)
 	    {
-		Eigen::Vector3d old_pt;
-		old_pt <<
-		    l->robots[i].point.x, 
-		    l->robots[i].point.y,
-		    l->robots[i].point.z;
-
-		Eigen::Vector3d cur_pt;
-		Eigen::VectorXd dist(num_new);
-		for (int j=0; j<(int) c->robots.size(); j++)
+		err = 0;
+		for (int j=0; j<nr; j++)
 		{
-		    cur_pt <<
-			c->robots[j].point.x,
-			c->robots[j].point.y,
-			c->robots[j].point.z;			
-		    dist(j) = (old_pt-cur_pt).norm();
+		    Eigen::Vector3d bvec = clust_eig.block<1,3>(j,0);
+		    Eigen::Vector3d cvec = bot_eig.block<1,3>(tab[i][j]-1,0);
+		    err += (bvec-cvec).norm();
 		}
-		min_dist(i) = find_minimum_index(dist);    
+		dist(i) = err;
 	    }
 
-	    // now we need to remove any repeats in min_dist by
-	    // looking at the one with the largest error with the
-	    // ordered robots
-	    
-	    
+	    // now find the entry in dist that has the minimum value:
+	    int key = find_minimum_index(dist);
+	    std::cout << "dist = " << dist(0) << " "  << dist(1)
+		      << "\t key = " << key << std::endl;
 
-
-
-	    
+	    // now, use the mapping defined by key to fill out s:
+	    s.header = c->header;
+	    s.number = nr;
+	    for (int i=0; i<nr; i++)
+	    {
+		std::cout << "tab[key][i] = " << tab[key][i]
+			  << "\tc->robots = " << c->robots[tab[key][i]-1].point.x
+			  << std::endl;
+		s.robots[i] = c->robots[tab[key][i]-1];
+	    }
 	    return s;
 	}
 
@@ -781,11 +798,11 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "multi_coordinator");
 
-    // turn on debugging
-    log4cxx::LoggerPtr my_logger =
-    log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
-    my_logger->setLevel(
-    ros::console::g_level_lookup[ros::console::levels::Debug]);
+    // // turn on debugging
+    // log4cxx::LoggerPtr my_logger =
+    // log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
+    // my_logger->setLevel(
+    // ros::console::g_level_lookup[ros::console::levels::Debug]);
 
     ros::NodeHandle n;
 
