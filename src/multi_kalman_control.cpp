@@ -134,14 +134,14 @@ public:
 	// Define a publisher for publishing the robot's reference pose
 	ref_pub = n_.advertise<nav_msgs::Odometry> ("reference_pose", 100);
 	rpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_robot", 100);
-	mpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_mass", 100);
+	// mpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_mass", 100);
 
 	// Read in the trajectory:
 	traj = ReadControls(filename);
 	// publish the robot results:
 	set_robot_path();
 	// read mass trajectory if it exists:
-	set_mass_path(filename);
+	// set_mass_path(filename);
 		
 	// Send a start flag:
 	send_start_flag();
@@ -205,7 +205,6 @@ public:
 		ROS_INFO_THROTTLE(5, "Calibrating...");
 
 		// publish paths
-		mpath_pub.publish(path_m);
 		rpath_pub.publish(path_r);
 	    }
 	    else if (operating_condition == 2)
@@ -602,53 +601,53 @@ public:
 	    }
 	}
 
-    void set_mass_path(std::string filename)
-	{
-	    struct stat buf;
-	    std::ifstream file;
-	    std::string line, tempstr;
-	    int num;
-	    std::string newname;
+    // void set_mass_path(std::string filename)
+    // 	{
+    // 	    struct stat buf;
+    // 	    std::ifstream file;
+    // 	    std::string line, tempstr;
+    // 	    int num;
+    // 	    std::string newname;
 
-	    newname = filename;
-	    newname.resize(newname.size()-4);
-	    newname += "_mass.txt";	    if(stat(newname.c_str(), &buf))
-	    {
-		ROS_INFO("No file describing mass trajectory found");
-		return;
-	    }
-	    ROS_INFO("Reading mass trajectory: %s",newname.c_str());
-	    file.open(newname.c_str(), std::fstream::in);
+    // 	    newname = filename;
+    // 	    newname.resize(newname.size()-4);
+    // 	    newname += "_mass.txt";	    if(stat(newname.c_str(), &buf))
+    // 	    {
+    // 		ROS_INFO("No file describing mass trajectory found");
+    // 		return;
+    // 	    }
+    // 	    ROS_INFO("Reading mass trajectory: %s",newname.c_str());
+    // 	    file.open(newname.c_str(), std::fstream::in);
 
-	    // read num:
-	    file >> line;
-	    file >> num;
+    // 	    // read num:
+    // 	    file >> line;
+    // 	    file >> num;
 
-	    path_m.poses.resize(num);
-	    path_m.header.frame_id = "optimization_frame";
+    // 	    path_m.poses.resize(num);
+    // 	    path_m.header.frame_id = "optimization_frame";
 
-	    ROS_DEBUG("number of points in mass file = %d",num);
+    // 	    ROS_DEBUG("number of points in mass file = %d",num);
 
-	    for (int i=0; i<num; i++)
-	    {
-	    	getline(file,line,',');
-	    	// path_m.poses[i].header.stamp = temp;
-	    	path_m.poses[i].header.frame_id = "optimization_frame";
+    // 	    for (int i=0; i<num; i++)
+    // 	    {
+    // 	    	getline(file,line,',');
+    // 	    	// path_m.poses[i].header.stamp = temp;
+    // 	    	path_m.poses[i].header.frame_id = "optimization_frame";
 		
-	    	getline(file,line,',');
-		path_m.poses[i].pose.position.x = fromString<double>(line);
-	    	getline(file,line,',');
-		path_m.poses[i].pose.position.y = fromString<double>(line);
-	    	getline(file,line);
-		path_m.poses[i].pose.position.z = fromString<double>(line);
-	    }
-	    file.close();
+    // 	    	getline(file,line,',');
+    // 		path_m.poses[i].pose.position.x = fromString<double>(line);
+    // 	    	getline(file,line,',');
+    // 		path_m.poses[i].pose.position.y = fromString<double>(line);
+    // 	    	getline(file,line);
+    // 		path_m.poses[i].pose.position.z = fromString<double>(line);
+    // 	    }
+    // 	    file.close();
 
-	    // set the mass initial parameters
-	    ros::param::set("mass_x0", path_m.poses[0].pose.position.x);
-	    ros::param::set("mass_y0", path_m.poses[0].pose.position.y);
-	    ros::param::set("mass_z0", path_m.poses[0].pose.position.z);
-	}
+    // 	    // set the mass initial parameters
+    // 	    ros::param::set("mass_x0", path_m.poses[0].pose.position.x);
+    // 	    ros::param::set("mass_y0", path_m.poses[0].pose.position.y);
+    // 	    ros::param::set("mass_z0", path_m.poses[0].pose.position.z);
+    // 	}
 };
 
 // command_line parsing:

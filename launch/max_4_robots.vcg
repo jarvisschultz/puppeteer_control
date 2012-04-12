@@ -54,18 +54,6 @@ Grid.OffsetZ=0
 Grid.Plane=0
 Grid.Plane\ Cell\ Count=10
 Grid.Reference\ Frame=<Fixed Frame>
-Mass\ Path.Alpha=1
-Mass\ Path.ColorR=0.1
-Mass\ Path.ColorG=1
-Mass\ Path.ColorB=0
-Mass\ Path.Enabled=0
-Mass\ Path.Topic=/desired_path_mass
-Robot\ Path.Alpha=1
-Robot\ Path.ColorR=0.1
-Robot\ Path.ColorG=1
-Robot\ Path.ColorB=0
-Robot\ Path.Enabled=0
-Robot\ Path.Topic=/desired_path_robot
 cluster_1_cloud.Alpha=1
 cluster_1_cloud.Billboard\ Size=0.01
 cluster_1_cloud.Color\ Transformer=Flat Color
@@ -178,10 +166,22 @@ cluster_4_cloud..IntensityMin\ ColorG=0
 cluster_4_cloud..IntensityMin\ ColorB=0
 cluster_4_cloud..IntensityMin\ Intensity=0
 cluster_4_cloud..IntensityUse\ full\ RGB\ spectrum=0
+robot_1_path.Alpha=1
+robot_1_path.ColorR=0.1
+robot_1_path.ColorG=1
+robot_1_path.ColorB=0
+robot_1_path.Enabled=1
+robot_1_path.Topic=/robot_1/desired_path_robot
+robot_2_path.Alpha=1
+robot_2_path.ColorR=0.952941
+robot_2_path.ColorG=0.0862745
+robot_2_path.ColorB=0.14902
+robot_2_path.Enabled=1
+robot_2_path.Topic=/robot_2/desired_path_robot
 Tool\ 2D\ Nav\ GoalTopic=goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
 Camera\ Type=rviz::OrbitViewController
-Camera\ Config=2.80059 3.14899 3.80343 0.292609 1.39484 0.128088
+Camera\ Config=2.88559 3.14399 3.84856 0.292609 1.39484 0.128088
 Property\ Grid\ State=selection=;expanded=.Global Options,Full Cloud.Enabled.Full Cloud.StatusTopStatus,Default Frames./openni_camera/openni_camera,Default Frames./openni_depth_frame/openni_depth_frame,Default Frames./openni_depth_optical_frame/openni_depth_optical_frame,Default Frames./openni_rgb_frame/openni_rgb_frame,Default Frames./openni_rgb_optical_frame/openni_rgb_optical_frame,Default Frames./oriented_optimization_frame/oriented_optimization_frame,Default Frames.Enabled.Default Frames.Tree,Default Frames./openni_cameraTree/openni_camera,Default Frames./openni_depth_frameTree/openni_depth_frame,Default Frames./openni_depth_optical_frameTree/openni_depth_optical_frame,Default Frames./oriented_optimization_frameTree/oriented_optimization_frame,Default Frames./openni_rgb_frameTree/openni_rgb_frame,Default Frames./openni_rgb_optical_frameTree/openni_rgb_optical_frame;scrollpos=0,0;splitterpos=228,473;ispageselected=1
 [Display0]
 Name=Full Cloud
@@ -196,11 +196,11 @@ Name=Grid
 Package=rviz
 ClassName=rviz::GridDisplay
 [Display3]
-Name=Robot Path
+Name=robot_1_path
 Package=rviz
 ClassName=rviz::PathDisplay
 [Display4]
-Name=Mass Path
+Name=robot_2_path
 Package=rviz
 ClassName=rviz::PathDisplay
 [Display5]

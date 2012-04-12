@@ -15,7 +15,11 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition.hpp>
 
+#include <vector>
 #include <iostream>
+#include <iterator>
+#include <stdio.h>
+#include <algorithm>
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -38,7 +42,16 @@
 #define NUM_CALIBRATES (30)
 #define ROBOT_CIRCUMFERENCE (57.5) // centimeters
 #define DEFAULT_RADIUS (ROBOT_CIRCUMFERENCE/M_PI/2.0/100.) // meters
-#define NUM_EKF_INITS (3)
+
+
+
+//---------------------------------------------------------------------------
+// Prototypes
+//---------------------------------------------------------------------------
+void add_to_tab(char reset, int num, int *p, int **tab);
+void move_perm_entry( int x, int d, int *p, int *pi);
+void permute(int n, int num, int *dir, int *p, int *pi, int **tab);
+void generate_perm_table(int num, int **tab);
 
 //---------------------------------------------------------------------------
 // Objects and Functions
@@ -63,7 +76,9 @@ private:
     tf::TransformBroadcaster br;
     nav_msgs::Odometry kin_pose[MAX_ROBOTS];
     puppeteer_msgs::Robots current_bots, prev_bots, start_bots, cal_bots;
+    puppeteer_msgs::Robots current_bots_sorted, prev_bots_sorted;
     Eigen::Vector3d cal_pos;
+    int **tab;
 
 
 public:
@@ -125,6 +140,15 @@ public:
 	for (int i=0; i<nr; i++)
 	    kin_pose[i].pose.covariance = kincov;
 
+	// allocate memory for the permuatation table:
+	int height = 1;
+	for (int j=1; j<=nr; j++)
+	    height *= j;
+	tab = new int*[height];
+	for (int j=0; j<height; j++) 
+	    tab[j] = new int[nr];
+	generate_perm_table(nr, tab);
+
 	return;
     }
 
@@ -152,16 +176,20 @@ public:
 	    prev_bots = current_bots;
 	    current_bots = b;
 	    // do we need to calibrate?
-	    if ( !calibrated_flag ) {
-	    	calibrate_routine();
+	    if ( !calibrated_flag &&
+		 (int) current_bots.robots.size() == nr)
+	    {
+		prev_bots_sorted = current_bots_sorted;
+		current_bots_sorted = calibrate_routine();
 	    	return;
 	    }
 
 	    // send all relevant transforms
 	    send_frames();
 
-	    // // transform the Robots to /optimization_frame
-	    // transform_robots();
+	    // If we got here, we are calibrated.  That means we can
+	    // sort robots based on previous locations
+	    current_bots_sorted = associate_robots(&current_bots, &prev_bots_sorted);
 
 	    return;
 	}
@@ -170,8 +198,7 @@ public:
 
     void timercb(const ros::TimerEvent& e)
 	{
-	    static unsigned int init_ekf_count = 0;
-	    
+	    ROS_DEBUG("timercb triggered");
 	    if (gen_flag)
 	    {
 		// Generate the robot ordering vector
@@ -186,13 +213,7 @@ public:
 	    if(operating_condition == 1 || operating_condition == 2)
 	    {
 		if(calibrated_flag == true)
-		{
-		    if(init_ekf_count <= NUM_EKF_INITS)
-			get_kinect_estimate(1);
-		    else
-			get_kinect_estimate(operating_condition);
-		    init_ekf_count++;
-		}
+		    process_robots();
 		return;
 	    }
 	    
@@ -210,16 +231,16 @@ public:
 
 	    calibrated_flag = false;
 	    calibrate_count = 0;
-	    init_ekf_count = 0;
 	    return;
 	}
     
 
-    void calibrate_routine(void)
+    puppeteer_msgs::Robots calibrate_routine(void)
 	{
 	    ROS_DEBUG("calibration_routine triggered");
 	    static Eigen::MatrixXd cal_eig(nr,3);
-
+	    puppeteer_msgs::Robots sorted_bots;
+		
 	    // if this is the first call to the function, let's get
 	    // the starting pose for each of the robots.
 	    if(calibrate_count == 0)
@@ -252,13 +273,12 @@ public:
 		cal_pos << 0, 0, 0;
 		for(int i=0; i<cal_eig.rows(); i++) {
 		    cal_eig(i,0) = 0; cal_eig(i,1) = 0; cal_eig(i,2) = 0; }
-		return;
+		return sorted_bots;
 	    }
 	    // we are in the process of calibrating:
 	    else if (calibrate_count <= NUM_CALIBRATES)
 	    {
 		ROS_DEBUG("summing the data");
-		puppeteer_msgs::Robots sorted_bots;
 		sorted_bots = sort_bots_with_order(&current_bots);
 		Eigen::Matrix<double, Eigen::Dynamic, 3> sorted_eig;
 		bots_to_eigen(&sorted_eig, &sorted_bots);
@@ -289,12 +309,13 @@ public:
 		calibrated_flag = true;
 		calibrate_count = 0;
 	    }
-	    return;
+	    return sorted_bots;
 	}
 
     // now that we are calibrated, we are free to send the transforms:
     void send_frames(void)
 	{
+	    ROS_DEBUG("Sending frames");
 	    tf::Transform transform;
 
 	    transform.setOrigin(tf::Vector3(cal_pos(0),
@@ -415,7 +436,7 @@ public:
 	}
 
     
-// convert a Robots message to an Eigen matrix
+    // convert a Robots message to an Eigen matrix
     void bots_to_eigen(Eigen::Matrix<double, Eigen::Dynamic, 3> *e,
 		       puppeteer_msgs::Robots *r)
 	{
@@ -485,9 +506,89 @@ public:
 	    return false;
 	}
 
+    // This function takes references to two Robot messages, a current
+    // and a last.  It sorts the data such that the returned Robots
+    // message has the same data as the current message, but it is
+    // sorted according to the last message order.
+    puppeteer_msgs::Robots associate_robots(
+	puppeteer_msgs::Robots *c,
+	puppeteer_msgs::Robots *l)
+	{
+	    ROS_DEBUG("Attempting data association problem");
+	    puppeteer_msgs::Robots s;
+	    s.robots.resize(nr);
 
+	    // for now, let's assume that l has the same size as the
+	    // number of robots.  we can do this because we are always
+	    // going to return a full-sized version from this function
+	    // additionally, the other sorting function doesn't even
+	    // get called if we don't have a full-size message.
+
+	    int num_new = (int) c->robots.size();
+	    Eigen::VectorXd min_dist(nr);
+	    // so now perform the matchup:
+	    for (int i=0; i<nr; i++)
+	    {
+		Eigen::Vector3d old_pt;
+		old_pt <<
+		    l->robots[i].point.x, 
+		    l->robots[i].point.y,
+		    l->robots[i].point.z;
+
+		Eigen::Vector3d cur_pt;
+		Eigen::VectorXd dist(num_new);
+		for (int j=0; j<(int) c->robots.size(); j++)
+		{
+		    cur_pt <<
+			c->robots[j].point.x,
+			c->robots[j].point.y,
+			c->robots[j].point.z;			
+		    dist(j) = (old_pt-cur_pt).norm();
+		}
+		min_dist(i) = find_minimum_index(dist);    
+	    }
+
+	    // now we need to remove any repeats in min_dist by
+	    // looking at the one with the largest error with the
+	    // ordered robots
+	    
+	    
+
+
+
+	    
+	    return s;
+	}
+
+
+    // This function takes in an Eigen::VectorXd, and returns the
+    // index to its minimum element:
+    int find_minimum_index(Eigen::VectorXd v)
+	{
+	    std::vector<double> tmp;
+	    // convert VectorXd to a std::vector
+	    for (int i=0; i< (int) v.size(); i++)
+		tmp.push_back(v(i));
+	    return ((int) distance(tmp.begin(),
+				   min_element(tmp.begin(), tmp.end())));
+	}
     
-        void get_kinect_estimate(int op)
+
+    // process_robots simply iterates through a sorted list of robots,
+    // and sends the appropriate transforms and topics
+    void process_robots(void)
+	{
+	    
+
+	    return;
+	}
+	
+    
+
+    // This function is responsible for converting the data from the
+    // kinect into an odometry message, and tranforming it to the same
+    // frame that the ekf uses    
+    void send_kinect_estimate(geometry_msgs::PointStamped pt, int robot_index)
 	{
 	    // // Let's first get the transform from /optimization_frame
 	    // // to /map
@@ -593,26 +694,98 @@ public:
 	    
 	    return(point);	    	    
 	}
-
-
     
 }; // end Coordinator Class
 
 
 
 //---------------------------------------------------------------------------
-// Main
+// PERMUTATION FUNCTIONS
 //---------------------------------------------------------------------------
 
+void add_to_tab(char reset, int num, int *p, int **tab)
+{
+    static int count=0;
+    if (reset)
+	count = 0;
+    int i;
+    for (i=1; i <= num; ++i)
+	tab[count][i-1]=p[i];
+    count++;
+}
+
+void move_perm_entry( int x, int d, int *p, int *pi)
+{
+   int z;
+   z = p[pi[x]+d];
+   p[pi[x]] = z;
+   p[pi[x]+d] = x;
+   pi[z] = pi[x];
+   pi[x] = pi[x]+d;
+} 
+
+
+void permute(int n, int num, int *dir, int *p, int *pi, int **tab)
+{
+    int i;
+    if (n > num)
+	add_to_tab(0, num, p, tab);
+    else
+    {
+    	permute(n+1, num, dir, p, pi, tab );
+    	for (i=1; i<=n-1; ++i)
+    	{
+    	    move_perm_entry(n, dir[n], p, pi);
+    	    permute(n+1, num, dir, p, pi, tab);
+    	}
+    	dir[n] = -dir[n];
+    } 
+}
+
+
+void generate_perm_table(int num, int **tab)
+{
+    int *perm, *dir, *permi;
+    int height = 1;
+    for (int j=1; j<=num; j++)
+	height *= j;
+    // allocate memory:
+    perm = new int[num];
+    permi = new int[num];
+    dir = new int[num];
+
+    // initialize variables:
+    perm[0]=0;
+    permi[0]=0;
+    dir[0]=0;
+    for (int i=1; i<=num; ++i)
+    {
+	dir[i] = -1; perm[i] = i;
+	permi[i] = i;
+    }
+
+    // build permutations and add to tab
+    permute(1, num, dir, perm, permi, tab);
+
+    return;    
+}
+
+
+
+
+
+//---------------------------------------------------------------------------
+// Main
+//---------------------------------------------------------------------------
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "multi_coordinator");
 
-    // // turn on debugging
-    // log4cxx::LoggerPtr my_logger =
-    // log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
-    // my_logger->setLevel(
-    // ros::console::g_level_lookup[ros::console::levels::Debug]);
+    // turn on debugging
+    log4cxx::LoggerPtr my_logger =
+    log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
+    my_logger->setLevel(
+    ros::console::g_level_lookup[ros::console::levels::Debug]);
 
     ros::NodeHandle n;
 
