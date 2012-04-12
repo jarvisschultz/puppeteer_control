@@ -25,6 +25,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
+#include <tf_conversions/tf_eigen.h>
 #include <puppeteer_msgs/PointPlus.h>
 #include <puppeteer_msgs/Robots.h>
 #include <geometry_msgs/Point.h>
@@ -42,7 +43,7 @@
 #define NUM_CALIBRATES (30)
 #define ROBOT_CIRCUMFERENCE (57.5) // centimeters
 #define DEFAULT_RADIUS (ROBOT_CIRCUMFERENCE/M_PI/2.0/100.) // meters
-
+#define NUM_EKF_INITS (5)
 
 
 //---------------------------------------------------------------------------
@@ -80,6 +81,7 @@ private:
     Eigen::Vector3d cal_pos;
     int **tab;
     int height;
+    std::vector<double> robot_start_ori;
 
 public:
     Coordinator() {
@@ -187,7 +189,8 @@ public:
 	    }
 
 	    // send all relevant transforms
-	    send_frames();
+	    if (calibrated_flag)
+		send_frames();
 
 	    // If we got here, we are calibrated.  That means we can
 	    // sort robots based on previous locations
@@ -201,6 +204,7 @@ public:
 
     void timercb(const ros::TimerEvent& e)
 	{
+	    static int num_delays = 0;
 	    ROS_DEBUG("timercb triggered");
 	    if (gen_flag)
 	    {
@@ -215,8 +219,13 @@ public:
 	    // check to see if we are in run state
 	    if(operating_condition == 1 || operating_condition == 2)
 	    {
-		if(calibrated_flag == true)
-		    process_robots();
+		if(calibrated_flag)
+		{
+		    if (num_delays > NUM_EKF_INITS)
+			process_robots();
+		    else
+			num_delays++;
+		}
 		return;
 	    }
 	    
@@ -234,6 +243,7 @@ public:
 
 	    calibrated_flag = false;
 	    calibrate_count = 0;
+	    num_delays = 0;
 	    return;
 	}
     
@@ -252,6 +262,7 @@ public:
 		puppeteer_msgs::Robots r;
 		double tmp;
 		r.robots.resize(nr);
+		robot_start_ori.clear();
 		for (int j=0; j<nr; j++)
 		{
 		    std::stringstream ss;
@@ -267,6 +278,10 @@ public:
 		    ros::param::get(ss.str(), tmp);
 		    ss.str(""); ss.clear();
 		    r.robots[j].point.z = tmp;
+
+		    ss << "/robot_" << j+1 << "/robot_th0";
+		    ros::param::get(ss.str(), tmp);
+		    robot_start_ori.push_back(tmp);
 		}
 
 		start_bots = r;
@@ -346,40 +361,6 @@ public:
 	    br.sendTransform(tf::StampedTransform(transform, tstamp,
 						  "map",
 						  "robot_odom_pov"));
-
-	    // Reset transform values for transforming data from
-	    // Kinect frame into optimization frame
-	    transform.setOrigin(tf::Vector3(cal_pos(0),
-					    cal_pos(1), cal_pos(2)));
-	    transform.setRotation(tf::Quaternion(0,0,0,1));
-
-	    
-	    // // Transform the received point into the actual
-	    // // optimization frame, store the old values, and store the
-	    // // new transformed value
-	    // if (!point.error)
-	    // {
-	    // 	Eigen::Affine3d gwo;
-	    // 	Eigen::Vector3d tmp_point; 
-	    // 	tf::TransformTFToEigen(transform, gwo);
-	    // 	gwo = gwo.inverse();
-	    // 	tmp_point << point.x, point.y, point.z;
-	    // 	tmp_point = gwo*tmp_point;
-
-	    // 	transformed_robot_last = transformed_robot;
-	    // 	transformed_robot.header.frame_id = "optimization_frame";
-	    // 	transformed_robot.header.stamp = tstamp;
-	    // 	transformed_robot.point.x = tmp_point(0);
-	    // 	transformed_robot.point.y = tmp_point(1);
-	    // 	transformed_robot.point.z = tmp_point(2);
-
-
-	    // 	if (first_flag == true)
-	    // 	{
-	    // 	    transformed_robot_last = transformed_robot;
-	    // 	    first_flag = false;
-	    // 	}
-	    // }
 
 	    return;
 	}
@@ -580,8 +561,9 @@ public:
     // and sends the appropriate transforms and topics
     void process_robots(void)
 	{
-	    
-
+	    for (int i=0; i<nr; i++)
+		send_kinect_estimate(current_bots_sorted.robots[i],
+				     prev_bots_sorted.robots[i], i);
 	    return;
 	}
 	
@@ -590,73 +572,108 @@ public:
     // This function is responsible for converting the data from the
     // kinect into an odometry message, and tranforming it to the same
     // frame that the ekf uses    
-    void send_kinect_estimate(geometry_msgs::PointStamped pt, int robot_index)
+    void send_kinect_estimate(geometry_msgs::PointStamped pt,
+			      geometry_msgs::PointStamped ptlast, int index)
 	{
-	    // // Let's first get the transform from /optimization_frame
-	    // // to /map
-	    // static tf::StampedTransform transform;
-	    // geometry_msgs::PointStamped tmp;
-		    
-	    // try{
-	    // 	tf.lookupTransform(
-	    // 	    "map", "optimization_frame",
-	    // 	    tstamp, transform);
-	    // 	tf.transformPoint("map", transformed_robot, tmp);
-
-	    // }
-	    // catch(tf::TransformException& ex){
-	    // 	ROS_ERROR(
-	    // 	    "Error trying to lookupTransform from /map "
-	    // 	    "to /optimization_frame: %s", ex.what());
-	    // 	return;
-	    // }
+	    Eigen::Affine3d gwo;
+	    Eigen::Vector3d tmp_point; 
+	    tf::Transform transform;
+	    geometry_msgs::PointStamped transpt, transptlast;
+	    ros::Time tstamp = pt.header.stamp;
 	    
-	    // // Now we can publish the Kinect's estimate of the robot's
-	    // // pose
-	    // kin_pose.header.stamp = tstamp;
-	    // kin_pose.header.frame_id = "map";
-	    // kin_pose.child_frame_id = "base_footprint_kinect";
-	    // tmp.point.z = 0.0;
-	    // kin_pose.pose.pose.position = tmp.point;
-	    // double theta = 0.0;
-	    // if (op == 2)
-	    // {
-	    // 	theta = atan2(transformed_robot.point.x-
-	    // 			     transformed_robot_last.point.x,
-	    // 			     transformed_robot.point.z-
-	    // 			     transformed_robot_last.point.z);
-	    // 	theta = clamp_angle(theta-M_PI/2.0);
-	    // }
-	    // else
-	    // {
-	    // 	theta = robot_start_ori;
-	    // 	theta = clamp_angle(-theta); 
-	    // }
-	    // geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
-	    // kin_pose.pose.pose.orientation = quat;				 
+
+	    // set transform parameters
+	    transform.setOrigin(tf::Vector3(cal_pos(0),
+					    cal_pos(1), cal_pos(2)));
+	    transform.setRotation(tf::Quaternion(0,0,0,1));
+
+	    // convert to Eigen:
+	    tf::TransformTFToEigen(transform, gwo);
+	    gwo = gwo.inverse();
+
+	    tmp_point << pt.point.x, pt.point.y, pt.point.z;
+	    tmp_point = gwo*tmp_point;
+	    transpt.header.frame_id = "optimization_frame";
+	    transpt.header.stamp = tstamp;
+	    transpt.point.x = tmp_point(0);
+	    transpt.point.y = tmp_point(1);
+	    transpt.point.z = tmp_point(2);
+
+	    tmp_point << ptlast.point.x, ptlast.point.y, ptlast.point.z;
+	    tmp_point = gwo*tmp_point;
+	    transptlast.header.frame_id = "optimization_frame";
+	    transptlast.header.stamp = tstamp;
+	    transptlast.point.x = tmp_point(0);
+	    transptlast.point.y = tmp_point(1);
+	    transptlast.point.z = tmp_point(2);
 	    
-	    // // Now let's publish the estimated pose as a
-	    // // nav_msgs/Odometry message on a topic called /vo
-	    // vo_pub.publish(kin_pose);
 
-	    // // now, let's publish the transform that goes along with it
-	    // geometry_msgs::TransformStamped kin_trans;
-	    // tf::Quaternion q1, q2;
-	    // q1 = tf::createQuaternionFromYaw(theta);
-	    // q2 = tf::Quaternion(1.0,0,0,0);
-	    // q1 = q1*q2;
-	    // tf::quaternionTFToMsg(q1, quat);
+	    // Let's first get the transform from /optimization_frame
+	    // to /map
+	    tf::StampedTransform trans_stamped;
+	    geometry_msgs::PointStamped tmp;
+	    try{
+	    	tf.lookupTransform(
+	    	    "map", "optimization_frame",
+	    	    tstamp, trans_stamped);
+	    	tf.transformPoint("map", transpt, tmp);
 
-	    // kin_trans.header.stamp = tstamp;
-	    // kin_trans.header.frame_id = kin_pose.header.frame_id;
-	    // kin_trans.child_frame_id = kin_pose.child_frame_id;
-	    // kin_trans.transform.translation.x = kin_pose.pose.pose.position.x;
-	    // kin_trans.transform.translation.y = kin_pose.pose.pose.position.y;
-	    // kin_trans.transform.translation.z = kin_pose.pose.pose.position.z;
-	    // kin_trans.transform.rotation = quat;
+	    }
+	    catch(tf::TransformException& ex){
+	    	ROS_ERROR(
+	    	    "Error trying to lookupTransform from /map "
+	    	    "to /optimization_frame: %s", ex.what());
+	    	return;
+	    }
+	    
+	    // Now we can publish the Kinect's estimate of the robot's
+	    // pose
+	    std::stringstream ss;
+	    ss << "base_footprint_kinect_robot_" << index;
+	    kin_pose[index].header.stamp = tstamp;
+	    kin_pose[index].header.frame_id = "map";
+	    kin_pose[index].child_frame_id = ss.str();
+	    tmp.point.z = 0.0;
+	    kin_pose[index].pose.pose.position = tmp.point;
+	    double theta = 0.0;
+	    if (operating_condition == 2)
+	    {
+	    	theta = atan2(transpt.point.x-
+	    			     transptlast.point.x,
+	    			     transpt.point.z-
+	    			     transptlast.point.z);
+	    	theta = clamp_angle(theta-M_PI/2.0);
+	    }
+	    else
+	    {
+	    	theta = robot_start_ori[index];
+	    	theta = clamp_angle(-theta); 
+	    }
+	    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
+	    kin_pose[index].pose.pose.orientation = quat;				 
+	    
+	    // Now let's publish the estimated pose as a
+	    // nav_msgs/Odometry message on a topic called /vo
+	    robots_pub[index].publish(kin_pose[index]);
 
-	    // ROS_DEBUG("Sending transform for output of estimator node");
-	    // br.sendTransform(kin_trans);
+	    // now, let's publish the transforms that goes along with it
+	    geometry_msgs::TransformStamped kin_trans;
+	    tf::Quaternion q1, q2;
+	    q1 = tf::createQuaternionFromYaw(theta);
+	    q2 = tf::Quaternion(1.0,0,0,0);
+	    q1 = q1*q2;
+	    tf::quaternionTFToMsg(q1, quat);
+
+	    kin_trans.header.stamp = tstamp;
+	    kin_trans.header.frame_id = kin_pose[index].header.frame_id;
+	    kin_trans.child_frame_id = kin_pose[index].child_frame_id;
+	    kin_trans.transform.translation.x = kin_pose[index].pose.pose.position.x;
+	    kin_trans.transform.translation.y = kin_pose[index].pose.pose.position.y;
+	    kin_trans.transform.translation.z = kin_pose[index].pose.pose.position.z;
+	    kin_trans.transform.rotation = quat;
+
+	    ROS_DEBUG("Sending transform for output of estimator node");
+	    br.sendTransform(kin_trans);
 	    
 	    return;
 	}
@@ -802,3 +819,4 @@ int main(int argc, char **argv)
   
     return 0;
 }
+

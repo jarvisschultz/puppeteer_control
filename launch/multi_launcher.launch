@@ -31,8 +31,8 @@
   <include file="$(find objecttracker_nu)/launch/$(arg track)_tracking.launch"/>
 
   <!--now let's launch the serial node-->
-  <node pkg="serial_node" type="serial_node" name="serial_node"
-	output="log" required="true" />
+  <node pkg="serial_node" type="multi_serial_node" name="serial_node"
+  	output="log" respawn="true" />
 
   <!-- launch rviz if "vis"=true: -->
   <group if="$(arg vis)">

@@ -52,6 +52,7 @@
 #define MAX_TRANS_VEL  (2.25)
 #define MAX_ANG_VEL (30.0)
 std::string filename;
+char ch;
 
 template <typename T> int sgn(T val)
 {
@@ -88,7 +89,7 @@ private:
     ros::ServiceClient client;
     ros::Subscriber sub;
     ros::Timer timer;
-    ros::Publisher ref_pub, mpath_pub, rpath_pub;
+    ros::Publisher ref_pub, rpath_pub;
     puppeteer_msgs::speed_command srv;
     tf::TransformBroadcaster br;
     nav_msgs::Odometry ref_pose;
@@ -106,11 +107,11 @@ public:
     KinematicControl() {
 	ROS_DEBUG("Instantiating KinematicControl Class");
 	// Initialize necessary variables:
-	if(ros::param::has("operating_condition"))
+	if(ros::param::has("/operating_condition"))
 	    ros::param::set("/operating_condition", 0);
 	else
 	{
-	    ROS_WARN("Cannot Find Parameter: operating_condition");
+	    ROS_WARN("Cannot Find Parameter: /operating_condition");
 	    ros::param::set("/operating_condition", 0);
 	}
 
@@ -134,14 +135,11 @@ public:
 	// Define a publisher for publishing the robot's reference pose
 	ref_pub = n_.advertise<nav_msgs::Odometry> ("reference_pose", 100);
 	rpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_robot", 100);
-	// mpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_mass", 100);
 
 	// Read in the trajectory:
 	traj = ReadControls(filename);
 	// publish the robot results:
 	set_robot_path();
-	// read mass trajectory if it exists:
-	// set_mass_path(filename);
 		
 	// Send a start flag:
 	send_start_flag();
@@ -231,7 +229,6 @@ public:
 		    check_winch();
 
 		    // publish paths
-		    mpath_pub.publish(path_m);
 		    rpath_pub.publish(path_r);
 		}
 		else
@@ -259,7 +256,7 @@ public:
 			srv.request.Vtop = 0.0;
 			srv.request.div = 3;
 			// set operating_condition to stop
-			ros::param::set("operating_condition", 3);
+			ros::param::set("/operating_condition", 3);
 			start_flag = true;
 			cal_start_flag = true;
 		    }
@@ -344,7 +341,9 @@ public:
 	    // nav_msgs::Odometry and publish it
 	    ref_pose.header.stamp = p.header.stamp;
 	    ref_pose.header.frame_id = "robot_odom_pov";
-	    ref_pose.child_frame_id = "base_footprint_ref";
+	    std::stringstream ss;
+	    ss << "robot_" << ch << "_base_footprint_ref";
+	    ref_pose.child_frame_id = ss.str();
 	    ref_pose.pose.pose.position.x = desired_x;
 	    ref_pose.pose.pose.position.y = desired_y;
 	    ref_pose.pose.pose.position.z = 0;
@@ -755,7 +754,13 @@ int main(int argc, char** argv)
     ros::NodeHandle n;
 
     command_line_parser(argc, argv);
-  
+
+    std::string name = ros::this_node::getNamespace();
+    if (!name.empty())
+	ch = *name.rbegin();
+    else
+	ch = '0';
+
     KinematicControl controller1;
 
     // infinite loop
