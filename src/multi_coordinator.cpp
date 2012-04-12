@@ -82,6 +82,8 @@ private:
     int **tab;
     int height;
     std::vector<double> robot_start_ori;
+    bool *bad_array;
+    boost::array<double,36ul> kincov;
 
 public:
     Coordinator() {
@@ -132,14 +134,16 @@ public:
 	tstamp = ros::Time::now();
 	    
 	// set covariance for the pose messages
-	double kin_cov_dist = 0.01;	// in meters^2
-	double kin_cov_ori = pow(M_PI,2.0);	// radians^2
-	boost::array<double,36ul> kincov = {{kin_cov_dist, 0, 0, 0, 0, 0,
-					     0, kin_cov_dist, 0, 0, 0, 0,
-					     0, 0,        99999, 0, 0, 0,
-					     0, 0, 0,        99999, 0, 0,
-					     0, 0, 0, 0,        99999, 0,
-					     0, 0, 0, 0, 0,  kin_cov_ori}};
+	double kin_cov_dist = 0.5;	// in meters^2
+	double kin_cov_ori = 100.0;	// radians^2
+	boost::array<double,36ul> tmp = {{kin_cov_dist, 0, 0, 0, 0, 0,
+					  0, kin_cov_dist, 0, 0, 0, 0,
+					  0, 0,        99999, 0, 0, 0,
+					  0, 0, 0,        99999, 0, 0,
+					  0, 0, 0, 0,        99999, 0,
+					  0, 0, 0, 0, 0,  kin_cov_ori}};
+	kincov = tmp;
+
 	for (int i=0; i<nr; i++)
 	    kin_pose[i].pose.covariance = kincov;
 
@@ -155,6 +159,9 @@ public:
 	for (int j=0; j<height; j++) 
 	    tab[j] = new int[nr];
 	generate_perm_table(nr, tab);
+
+	// allocate memory for bad_array
+	bad_array = new bool[nr];
 
 
 	return;
@@ -513,7 +520,7 @@ public:
 	    ROS_DEBUG("Filling in missing points");
 	    // first let's fill in the current Robots message that may
 	    // be missing data
-	    double def = 10000.0;
+	    double def = 100.0;
 	    geometry_msgs::PointStamped err_pt;
 	    err_pt.header = c.robots[0].header;
 	    err_pt.point.x = def;
@@ -551,6 +558,15 @@ public:
 	    s.number = nr;
 	    for (int i=0; i<nr; i++)
 		s.robots[i] = c.robots[tab[key][i]-1];
+	    // fill in error array:
+	    for (int j=0; j<nr; j++)
+	    {
+		if (s.robots[j].point.x > 99.0)
+		    bad_array[j] = true;
+		else
+		    bad_array[j] = false;
+	    }
+	    
 
 	    return s;
 	}
@@ -668,7 +684,19 @@ public:
 		ROS_DEBUG("predetermined angle = %f",theta);
 	    }
 	    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);
-	    kin_pose[index].pose.pose.orientation = quat;				 
+	    kin_pose[index].pose.pose.orientation = quat;
+
+	    // Let's check if this is a "bad" point
+	    if (bad_array[index])
+	    {
+		boost::array<double,36ul> tmpcov;
+		for (int i=0; i<36; i++)
+		    tmpcov[i] = kincov[i]*1000.0;
+		kin_pose[index].pose.covariance = tmpcov;
+	    }
+	    else
+		kin_pose[index].pose.covariance = kincov;
+	    
 	    ROS_DEBUG("Done filling in Odometry message");
 
 	    // Now let's publish the estimated pose as a
