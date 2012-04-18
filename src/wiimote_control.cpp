@@ -21,11 +21,7 @@
 
 
 /******DEFINED CONSTANTS:********************************/
-#define	    BAUDRATE		B115200
-#define	    MODEMDEVICE		"/dev/ttyUSB0"
-#define     _POSIX_SOURCE	1 /* POSIX compliant source */
 #define     MAX_WIIMOTES	4
-#define     PACKET_SIZE		12
 
 /*******GLOBAL VARIABLES********************************/
 
