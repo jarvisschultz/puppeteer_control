@@ -20,5 +20,5 @@
   <!-- launch the general wii node -->
   <node pkg="wiimote" type="wiimote_node.py"
 	name="wiimote_connection" output="screen" respawn="true" />
-
 </launch>
+
