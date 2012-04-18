@@ -49,7 +49,7 @@
 #define KROT (5.0)
 #define MULT (2.0)
 #define KHEIGHT (15.0)
-#define TIMEOUT (.5) // seconds
+#define TIMEOUT (0.5) // seconds
 
 //---------------------------------------------------------------------------
 // Class Definitions
@@ -70,6 +70,7 @@ private:
     int robot_index;
     bool lng_cmd;
     ros::Time wiitime;
+    bool wii_control;
     
 
 public:
@@ -91,6 +92,15 @@ public:
 	    ROS_WARN("Cannot Find Parameter: robot_index");
 	    ros::param::set("robot_index", 0);
 	}
+	
+	// set default values:
+	srv.request.type = (uint8_t) 'h';
+	lng.request.type = (uint8_t) 'n';
+	srv.request.div = 3;
+	lng.request.div = 3;
+	lng_cmd = false;
+	wii_control = true;
+	wiitime = ros::Time::now();
 
 	// Define service client:
 	client[0] = n_.serviceClient<puppeteer_msgs::speed_command>
@@ -108,12 +118,6 @@ public:
 	// create publisher for sending LED information
 	led_pub = n_.advertise<wiimote::LEDControl> ("wiimote/leds", 100);
 
-	// set default types:
-	srv.request.type = (uint8_t) 'h';
-	lng.request.type = (uint8_t) 'n';
-	srv.request.div = 3;
-	lng.request.div = 3;
-	lng_cmd = false;
 	    
     }
 
@@ -132,7 +136,7 @@ public:
 	    ros::Duration dt = ros::Time::now()-wiitime;
 	    if (dt.toSec() > TIMEOUT)
 	    {
-		ROS_WARN("wiimote timeout detected!");
+		ROS_WARN_THROTTLE(1,"wiimote timeout detected!");
 		ros::param::set("/operating_condition", 4);
 		lng_cmd = false;
 		srv.request.type = (uint8_t) 'q';
@@ -143,7 +147,7 @@ public:
 		    
 
 	    // If running, send command
-	    if (operating_condition == 2)
+	    if (operating_condition == 2 && wii_control)
 	    {
 		// send request to service
 		if (lng_cmd)
@@ -278,7 +282,7 @@ public:
 	    {
 		ROS_DEBUG("IDLING");
 		ros::param::set("operating_condition", 0);
-		srv.request.type = (uint8_t) 'q';
+		srv.request.type = (uint8_t) 'h';
 		srv.request.Vleft = 0.0;
 		srv.request.Vright = 0.0;
 		srv.request.Vtop = 0.0;
@@ -308,7 +312,7 @@ public:
 	    char c = fgetc(stdin);
 	    ROS_DEBUG("Read Character %c",c);
 
-	    if (c == 's')
+	    if (c == 'S')
 	    {
 		ROS_INFO("Sending start flag");
 		send_start_flag();
@@ -318,6 +322,14 @@ public:
 		robot_index = atoi(&c);
 		ros::param::set("robot_index", robot_index);
 		ROS_INFO("Robot index is now %d",robot_index);
+	    }
+	    else if (c == 'W')
+	    {
+		if (wii_control)
+		    ROS_INFO("Disabling wii control!");
+		else
+		    ROS_INFO("Enabling wii control!");
+		wii_control = !wii_control;		
 	    }
 	    else
 		ROS_WARN("Unrecognized character");
