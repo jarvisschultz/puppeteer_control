@@ -17,7 +17,6 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <wiimote/State.h>
-// #include <wiimote/LEDControl.h>
 #include <puppeteer_msgs/speed_command.h>
 #include <puppeteer_msgs/long_command.h>
 #include <puppeteer_msgs/RobotPose.h>
@@ -62,7 +61,6 @@ private:
     ros::NodeHandle n_;
     ros::ServiceClient client[2];
     ros::Subscriber sub;
-    ros::Publisher led_pub;
     ros::Timer timer;
     puppeteer_msgs::speed_command srv;
     puppeteer_msgs::long_command lng;
@@ -115,10 +113,6 @@ public:
 	// Define a timer and callback for checking system state:
 	timer = n_.createTimer(ros::Duration(0.033),
 			       &WiiControl::timercb, this);
-	// create publisher for sending LED information
-	// led_pub = n_.advertise<wiimote::LEDControl> ("wiimote/leds", 100);
-
-	    
     }
 
     void timercb(const ros::TimerEvent& e)
@@ -337,25 +331,6 @@ public:
 	    return;
 	}
 
-    // void set_leds(void)
-    // 	{
-    // 	    int i=0;
-    // 	    static int cnt = 0;
-    // 	    static int ON = 1;
-    // 	    if (!(cnt%10))
-    // 	    {
-    // 		ROS_DEBUG("Turn on LEDs");
-    // 		wiimote::LEDControl leds;
-    // 		leds.timed_switch_array.resize(4);
-    // 		leds.timed_switch_array[0].switch_mode = ON;
-    // 		for (i=1; i<4; i++)
-    // 		    leds.timed_switch_array[i].switch_mode = 0;
-    // 		led_pub.publish(leds);
-    // 		ON = !ON;
-    // 	    }
-    // 	    cnt++;
-    // 	}
-    
     void send_start_flag(void)
 	{
 	    ROS_DEBUG("Sending start flag");
@@ -397,11 +372,12 @@ int main(int argc, char** argv)
     ROSCONSOLE_AUTOINIT;
 
     // startup node
-    ros::init(argc, argv, "wiimote_controller");
+    // ros::init(argc, argv, "wiimote_controller");
     // log4cxx::LoggerPtr my_logger =
     // log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
     // my_logger->setLevel(
     // ros::console::g_level_lookup[ros::console::levels::Debug]);
+
     ros::NodeHandle n;
     ROS_INFO("Starting wiimote control node");
   
