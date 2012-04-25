@@ -29,12 +29,16 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
+## add eigen functionality
+find_package(Eigen REQUIRED)
+include_directories(${EIGEN_INCLUDE_DIRS})
+add_definitions(${EIGEN_DEFINITIONS})
+
 rosbuild_add_executable(puppeteer_control src/puppeteercontrol.cpp)
 rosbuild_add_executable(straight_control src/straight_driving.cpp)
 rosbuild_add_executable(kinematic_control src/kinematic_controller.cpp)
 rosbuild_add_executable(kinematic_control_3D src/kinematic_controller_3D.cpp)
 rosbuild_add_executable(position_control src/position_control.cpp)
-#rosbuild_add_executable(closed_loop_control src/closed_loop_control.py)
 rosbuild_add_executable(wiimote_control src/wiimote_control.cpp include/wiiuse.h)
 target_link_libraries(wiimote_control ${PROJECT_SOURCE_DIR}/lib/libwiiuse.so)
 rosbuild_add_executable(kalman_controller src/kalman_kinematic_control.cpp)

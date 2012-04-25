@@ -17,7 +17,7 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <wiimote/State.h>
-#include <wiimote/LEDControl.h>
+// #include <wiimote/LEDControl.h>
 #include <puppeteer_msgs/speed_command.h>
 #include <puppeteer_msgs/long_command.h>
 #include <puppeteer_msgs/RobotPose.h>
@@ -116,7 +116,7 @@ public:
 	timer = n_.createTimer(ros::Duration(0.033),
 			       &WiiControl::timercb, this);
 	// create publisher for sending LED information
-	led_pub = n_.advertise<wiimote::LEDControl> ("wiimote/leds", 100);
+	// led_pub = n_.advertise<wiimote::LEDControl> ("wiimote/leds", 100);
 
 	    
     }
@@ -201,7 +201,7 @@ public:
 	{
 	    wiitime = s.header.stamp;
 	    ROS_DEBUG("Subscriber callback triggered");
-	    set_leds();
+	    // set_leds();
 	    lng_cmd = false;
 
 	    // if A is pressed, we are driving:
@@ -337,24 +337,24 @@ public:
 	    return;
 	}
 
-    void set_leds(void)
-	{
-	    int i=0;
-	    static int cnt = 0;
-	    static int ON = 1;
-	    if (!(cnt%10))
-	    {
-		ROS_DEBUG("Turn on LEDs");
-		wiimote::LEDControl leds;
-		leds.timed_switch_array.resize(4);
-		leds.timed_switch_array[0].switch_mode = ON;
-		for (i=1; i<4; i++)
-		    leds.timed_switch_array[i].switch_mode = 0;
-		led_pub.publish(leds);
-		ON = !ON;
-	    }
-	    cnt++;
-	}
+    // void set_leds(void)
+    // 	{
+    // 	    int i=0;
+    // 	    static int cnt = 0;
+    // 	    static int ON = 1;
+    // 	    if (!(cnt%10))
+    // 	    {
+    // 		ROS_DEBUG("Turn on LEDs");
+    // 		wiimote::LEDControl leds;
+    // 		leds.timed_switch_array.resize(4);
+    // 		leds.timed_switch_array[0].switch_mode = ON;
+    // 		for (i=1; i<4; i++)
+    // 		    leds.timed_switch_array[i].switch_mode = 0;
+    // 		led_pub.publish(leds);
+    // 		ON = !ON;
+    // 	    }
+    // 	    cnt++;
+    // 	}
     
     void send_start_flag(void)
 	{

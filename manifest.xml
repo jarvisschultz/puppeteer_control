@@ -15,7 +15,6 @@
   <depend package="nav_msgs"/>
   <depend package="tf"/>
   <depend package="tf_conversions"/>
-  <depend package="eigen"/>
   <depend package="wiimote"/>
 </package>
 
