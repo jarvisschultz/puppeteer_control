@@ -24,7 +24,7 @@
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <!--start kinect... note if it is already running, the other
       instance will be automatically killed-->
-  <include file="$(find openni_launch)/launch/openni.launch"/>
+  <include file="$(find openni_launch)/launch/openni.launch"/> 
 
   <!--launch the object tracker, checking if we are tracking the
       robot or the system -->

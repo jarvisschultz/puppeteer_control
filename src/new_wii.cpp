@@ -372,7 +372,8 @@ int main(int argc, char** argv)
     ROSCONSOLE_AUTOINIT;
 
     // startup node
-    // ros::init(argc, argv, "wiimote_controller");
+    ros::init(argc, argv, "wiimote_controller");
+
     // log4cxx::LoggerPtr my_logger =
     // log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
     // my_logger->setLevel(
