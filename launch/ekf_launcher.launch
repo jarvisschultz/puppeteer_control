@@ -9,7 +9,7 @@
 
   <!--start kinect... note if it is already running, the other
       instance will be automatically killed-->
-  <include file="$(find openni_camera)/launch/openni_node.launch"/>
+  <include file="$(find openni_launch)/launch/openni.launch"/>
 
   <!-- launch rviz if "vis"=true: -->
   <arg name="vis" default="true" />
