@@ -55,7 +55,7 @@
     <!--define robot_radius parameter-->
     <param name="robot_radius" type="double" value="0.0915" />  
     <!-- set the robot index in this namespace -->
-    <param name="robot_index" type="int" value="2" />    
+    <param name="robot_index" type="int" value="1" />    
     <param name="winch_bool" type="bool" value="$(arg winch)" />
     <!--now let's launch the puppeteer_control node while passing
 	correct args-->
@@ -75,7 +75,7 @@
     <!-- define robot_radius parameter -->
     <param name="robot_radius" type="double" value="0.0915" />
     <!-- set the robot index in this namespace -->
-    <param name="robot_index" type="int" value="3" />
+    <param name="robot_index" type="int" value="4" />
     <param name="winch_bool" type="bool" value="$(arg winch)" />
     <!-- now let's launch the puppeteer_control node while passing -->
     <!-- 	correct args -->
