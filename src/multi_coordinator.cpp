@@ -44,7 +44,7 @@
 #define ROBOT_CIRCUMFERENCE (57.5) // centimeters
 #define DEFAULT_RADIUS (ROBOT_CIRCUMFERENCE/M_PI/2.0/100.) // meters
 #define NUM_EKF_INITS (5)
-
+#define DEFAULT_ERR  (10)
 
 //---------------------------------------------------------------------------
 // Prototypes
@@ -162,7 +162,6 @@ public:
 
 	// allocate memory for bad_array
 	bad_array = new bool[nr];
-
 
 	return;
     }
@@ -520,7 +519,7 @@ public:
 	    ROS_DEBUG("Filling in missing points");
 	    // first let's fill in the current Robots message that may
 	    // be missing data
-	    double def = 100.0;
+	    double def = DEFAULT_ERR;
 	    geometry_msgs::PointStamped err_pt;
 	    err_pt.header = c.robots[0].header;
 	    err_pt.point.x = def;
@@ -561,7 +560,7 @@ public:
 	    // fill in error array:
 	    for (int j=0; j<nr; j++)
 	    {
-		if (s.robots[j].point.x > 99.0)
+		if (s.robots[j].point.x > DEFAULT_ERR-0.1)
 		    bad_array[j] = true;
 		else
 		    bad_array[j] = false;
