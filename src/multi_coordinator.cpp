@@ -167,18 +167,52 @@ public:
     }
 
 
-    void datacb(const puppeteer_msgs::Robots &bots)
-    // void datacb(boost::shared_ptr<puppeteer_msgs::Robots const> bots)
+    void print_bots(const std::string name, const puppeteer_msgs::Robots &b)
 	{
-	    ROS_DEBUG("datacb triggered");
+	    const puppeteer_msgs::Robots *bptr;
+	    bptr = &b;
+	    
+	    std::cout << "Name = " << name << std::endl;
+	    std::cout << "Pointer = ";
+	    printf("%p\r\n", bptr);
+
+	    std::cout << "Total number of robots = "
+		      << b.robots.size() << std::endl;
+
+	    for(int j=0; j<((int) b.robots.size()); j++)
+		printf("x = %f, y = %f, z = %f\r\n",
+		       b.robots[j].point.x,
+		       b.robots[j].point.y,		
+		       b.robots[j].point.z);
+	    		    
+	    std::cout << std::endl;
+	    return;
+	}
+
+    
+    
+    void datacb(const puppeteer_msgs::Robots &bots)
+	{
+	    ROS_DEBUG("datacb triggered with OC = %d",operating_condition);
 	    static bool first_flag = true;
+
+	    // if we aren't calibrating or running, let's just exit
+	    // this cb
+	    if (operating_condition != 2 && operating_condition != 1)
+		return;
 	    puppeteer_msgs::Robots b;
+	    b.robots.resize(bots.robots.size());
 	    b = bots;
 
+	    // print_bots("b (orig)", b);
+	    
 	    tstamp = ros::Time::now();
 	    
 	    // correct the points in bots
 	    b = adjust_for_robot_size(b);
+
+	    // print_bots("b (corrected)", b);	    
+
 	    // store the values that we received:
 	    if (first_flag) {
 		ROS_DEBUG("First call!");
@@ -189,12 +223,21 @@ public:
 	    }
 	    prev_bots = current_bots;
 	    current_bots = b;
+
+	    // print_bots("prev (after switch)", prev_bots);
+	    // print_bots("current (after switch)", current_bots);
+	    
 	    // do we need to calibrate?
-	    if ( !calibrated_flag &&
-		 (int) current_bots.robots.size() == nr)
+	    if ( !calibrated_flag )
 	    {
-		prev_bots_sorted = current_bots_sorted;
-		current_bots_sorted = calibrate_routine();
+		if ((int) current_bots.robots.size() == nr)
+		{
+		    prev_bots_sorted = current_bots_sorted;
+		    current_bots_sorted = calibrate_routine();
+		    // printf("\r\n\r\nCALIBRATING\r\n");
+		    // print_bots("prev_sort (after)", prev_bots_sorted);
+		    // print_bots("curr_sort (after)", current_bots_sorted);
+		}
 	    	return;
 	    }
 
@@ -205,10 +248,15 @@ public:
 	    // If we got here, we are calibrated.  That means we can
 	    // sort robots based on previous locations
 	    puppeteer_msgs::Robots tmp;
-	    tmp.robots.resize(nr);
+	    tmp.robots.resize(current_bots_sorted.robots.size());
 	    tmp = current_bots_sorted;
+	    // print_bots("tmp_bots (before)",tmp);
 	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
 	    prev_bots_sorted = tmp;
+
+	    // printf("\r\n\r\nUSING SORTED\r\n");
+	    // print_bots("prev_sort (after)", prev_bots_sorted);
+	    // print_bots("curr_sort (after)", current_bots_sorted);
 
 	    return;
 	}
@@ -227,8 +275,14 @@ public:
 	    }
 
 	    // get operating condition
-	    ros::param::get("/operating_condition", operating_condition);
-	    	    
+	    if (ros::param::has("/operating_condition"))
+		ros::param::get("/operating_condition", operating_condition);
+	    else
+	    {
+		operating_condition = 4;
+		ros::param::set("/operating_condition", operating_condition);
+	    }
+	    
 	    // check to see if we are in run state
 	    if(operating_condition == 1 || operating_condition == 2)
 	    {
@@ -326,6 +380,7 @@ public:
 		cal_eig /= (double) NUM_CALIBRATES; // average all vectors
 		
 		// get transform for each robot:
+		sorted_bots = sort_bots_with_order(&current_bots);
 		Eigen::Matrix<double, Eigen::Dynamic, 3> temp_eig;
 		bots_to_eigen(&temp_eig, &start_bots);
 		cal_eig = temp_eig-cal_eig;

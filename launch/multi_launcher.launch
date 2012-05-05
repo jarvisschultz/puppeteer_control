@@ -32,7 +32,7 @@
 
   <!--now let's launch the serial node-->
   <node pkg="serial_node" type="multi_serial_node" name="serial_node"
-  	output="log" respawn="true" />
+  	output="log" respawn="true" launch-prefix="xterm -rv -e"/>
 
   <!-- launch rviz if "vis"=true: -->
   <group if="$(arg vis)">
@@ -41,8 +41,10 @@
   </group>
 
   <!-- launch the coordinator node -->
+  <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
+  <!-- launch-prefix=xterm -rv -e gdb args -->
   <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
-  	output="screen" required="true"/>
+  	output="screen" required="true" />
 
 
 

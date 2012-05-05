@@ -7,7 +7,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE Debug)
 
 rosbuild_init()
 
@@ -43,5 +43,8 @@ rosbuild_add_executable(wiimote_control src/wiimote_control.cpp include/wiiuse.h
 target_link_libraries(wiimote_control ${PROJECT_SOURCE_DIR}/lib/libwiiuse.so)
 rosbuild_add_executable(kalman_controller src/kalman_kinematic_control.cpp)
 rosbuild_add_executable(multi_kalman_controller src/multi_kalman_control.cpp)
+
 rosbuild_add_executable(multi_coordinator src/multi_coordinator.cpp)
+rosbuild_add_compile_flags(multi_coordinator "-g -Wall")
+
 rosbuild_add_executable(new_wiimote src/new_wii.cpp)

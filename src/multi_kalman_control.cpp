@@ -249,7 +249,7 @@ public:
 		    {
 			// stop robot!
 			ROS_INFO("Trajectory Finished!");
-			srv.request.robot_index = traj->RobotMY;
+			srv.request.robot_index = 9;
 			srv.request.type = 'h';
 			srv.request.Vleft = 0.0;
 			srv.request.Vright = 0.0;
