@@ -542,8 +542,16 @@ public:
 	    ros::param::set("/robot_y0", 1.0); // this value is arbitrary!
 	    ros::param::set("/robot_r0", traj->vals[0][5]);
 
-	    double th = atan2(traj->vals[1][1]-traj->vals[0][1],
-			      traj->vals[1][2]-traj->vals[0][2]);
+	    double th = atan2(traj->vals[1][2]-traj->vals[0][2],
+			      traj->vals[1][1]-traj->vals[0][1]);
+
+	    std::cout << "Debugging initial orientation " << std::endl;
+	    std::cout << "First args: " <<
+		traj->vals[1][1] << " - " << traj->vals[0][1] << std::endl;
+	    std::cout << "Second args: " <<
+		traj->vals[1][2] << " - " << traj->vals[0][2] << std::endl;
+
+	    std::cout << "th = " << th << std::endl;
 
 	    if (isnan(th) == 0)
 	    {
@@ -552,6 +560,8 @@ public:
 	    }
 	    else
 		ROS_ERROR("Initial angle returned NaN!");
+
+	    std::cout << "th (clamped) = " << th << std::endl;
 
 	    return traj;
 	}
