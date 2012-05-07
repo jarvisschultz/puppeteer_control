@@ -199,7 +199,6 @@ public:
 	{
 	    ROS_DEBUG("datacb triggered with OC = %d",operating_condition);
 	    static bool first_flag = true;
-	    static int count = 0;
 
 	    // if we aren't calibrating or running, let's just exit
 	    // this cb
@@ -209,14 +208,10 @@ public:
 	    b.robots.resize(bots.robots.size());
 	    b = bots;
 
-	    // print_bots("b (orig)", b);
-	    
 	    tstamp = ros::Time::now();
 	    
 	    // correct the points in bots
 	    b = adjust_for_robot_size(b);
-
-	    // print_bots("b (corrected)", b);	    
 
 	    // store the values that we received:
 	    if (first_flag) {
@@ -228,9 +223,6 @@ public:
 	    }
 	    prev_bots = current_bots;
 	    current_bots = b;
-
-	    // print_bots("prev (after switch)", prev_bots);
-	    // print_bots("current (after switch)", current_bots);
 	    
 	    // do we need to calibrate?
 	    if ( !calibrated_flag )
@@ -239,10 +231,6 @@ public:
 		{
 		    prev_bots_sorted = current_bots_sorted;
 		    current_bots_sorted = calibrate_routine();
-		    // printf("\r\n\r\nCALIBRATING (number %d)\r\n", count);
-		    // print_bots("prev_sort (after)", prev_bots_sorted);
-		    // print_bots("curr_sort (after)", current_bots_sorted);
-		    count++;
 		}
 	    	return;
 	    }
@@ -260,11 +248,6 @@ public:
 	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
 	    prev_bots_sorted = tmp;
 
-	    // printf("\r\n\r\nUSING SORTED (number %d)\r\n", count);
-	    // print_bots("prev_sort (after)", prev_bots_sorted);
-	    // print_bots("incoming adjusted bots", b);
-	    // print_bots("curr_sort (after)", current_bots_sorted);
-	    count++;
 	    return;
 	}
 	
@@ -627,29 +610,7 @@ public:
 		else
 		    bad_array[j] = false;
 	    }
-	    
-	    // if (c.robots[0].point.x < 0.25)
-	    // {
-	    // 	std::cout << "BAD PERMUTATION DETECTED" << std::endl;
-	    // 	print_bots("current_bots", c);
-	    // 	print_bots("previous_bots_sorted", l);
-	    // 	print_bots("sorted_bots", s);
-
-	    // 	std::cout << "key = " << key << std::endl;
-	    // 	std::cout << "height = " << height << std::endl;
-	    // 	std::cout << "distance array = " << std::endl;
- 	    // 	for (int j=0; j<height; j++)
-	    // 	    std::cout << j << " : " << dist(j) << std::endl;
-	    // 	std::cout << "table = " << std::endl;
-	    // 	for (int j=0; j<height; j++)
-	    // 	    std::cout << j << " : "
-  	    // 		      << tab[j][0] << ", " 
-	    // 		      << tab[j][1] << ", "
-	    // 		      << tab[j][2] << std::endl;
-		
-	    // 	assert(0);
-	    // }
-	    
+	    	    
 	    return s;
 	}
 
