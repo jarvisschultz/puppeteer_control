@@ -78,6 +78,7 @@ private:
     nav_msgs::Odometry kin_pose[MAX_ROBOTS];
     puppeteer_msgs::Robots current_bots, prev_bots, start_bots, cal_bots;
     puppeteer_msgs::Robots current_bots_sorted, prev_bots_sorted;
+    puppeteer_msgs::Robots desired_bots;
     Eigen::Vector3d cal_pos;
     int **tab;
     int height;
@@ -108,6 +109,9 @@ public:
 	    std::stringstream ss;
 	    ss << "/robot_" << j+1 << "/vo";
 	    robots_pub[j] = n_.advertise<nav_msgs::Odometry>(ss.str(), 1);
+
+	    // creating subscribers
+	    
 	}
 
 	// set operating condition to idle
@@ -195,6 +199,7 @@ public:
 	{
 	    ROS_DEBUG("datacb triggered with OC = %d",operating_condition);
 	    static bool first_flag = true;
+	    static int count = 0;
 
 	    // if we aren't calibrating or running, let's just exit
 	    // this cb
@@ -234,13 +239,14 @@ public:
 		{
 		    prev_bots_sorted = current_bots_sorted;
 		    current_bots_sorted = calibrate_routine();
-		    // printf("\r\n\r\nCALIBRATING\r\n");
+		    // printf("\r\n\r\nCALIBRATING (number %d)\r\n", count);
 		    // print_bots("prev_sort (after)", prev_bots_sorted);
 		    // print_bots("curr_sort (after)", current_bots_sorted);
+		    count++;
 		}
 	    	return;
 	    }
-
+	    
 	    // send all relevant transforms
 	    if (calibrated_flag)
 		send_frames();
@@ -254,10 +260,11 @@ public:
 	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
 	    prev_bots_sorted = tmp;
 
-	    // printf("\r\n\r\nUSING SORTED\r\n");
+	    // printf("\r\n\r\nUSING SORTED (number %d)\r\n", count);
 	    // print_bots("prev_sort (after)", prev_bots_sorted);
+	    // print_bots("incoming adjusted bots", b);
 	    // print_bots("curr_sort (after)", current_bots_sorted);
-
+	    count++;
 	    return;
 	}
 	
@@ -596,8 +603,8 @@ public:
 		err = 0;
 		for (int j=0; j<nr; j++)
 		{
-		    Eigen::Vector3d bvec = clust_eig.block<1,3>(j,0);
-		    Eigen::Vector3d cvec = bot_eig.block<1,3>(tab[i][j]-1,0);
+		    Eigen::Vector3d bvec = bot_eig.block<1,3>(j,0);
+		    Eigen::Vector3d cvec = clust_eig.block<1,3>(tab[i][j]-1,0);
 		    err += (bvec-cvec).norm();
 		}
 		dist(i) = err;
@@ -621,7 +628,28 @@ public:
 		    bad_array[j] = false;
 	    }
 	    
+	    // if (c.robots[0].point.x < 0.25)
+	    // {
+	    // 	std::cout << "BAD PERMUTATION DETECTED" << std::endl;
+	    // 	print_bots("current_bots", c);
+	    // 	print_bots("previous_bots_sorted", l);
+	    // 	print_bots("sorted_bots", s);
 
+	    // 	std::cout << "key = " << key << std::endl;
+	    // 	std::cout << "height = " << height << std::endl;
+	    // 	std::cout << "distance array = " << std::endl;
+ 	    // 	for (int j=0; j<height; j++)
+	    // 	    std::cout << j << " : " << dist(j) << std::endl;
+	    // 	std::cout << "table = " << std::endl;
+	    // 	for (int j=0; j<height; j++)
+	    // 	    std::cout << j << " : "
+  	    // 		      << tab[j][0] << ", " 
+	    // 		      << tab[j][1] << ", "
+	    // 		      << tab[j][2] << std::endl;
+		
+	    // 	assert(0);
+	    // }
+	    
 	    return s;
 	}
 
