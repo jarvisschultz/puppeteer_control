@@ -1,11 +1,11 @@
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=-0.939801 1.564 3.43267 -0.0969979 0.0685933 1.1598
+Camera\ Config=-0.869801 1.554 2.71959 -0.112383 0.326697 1.19386
 Camera\ Type=rviz::OrbitViewController
 Default\ Frames.All\ Enabled=0
 Default\ Frames.Enabled=1
-Default\ Frames.Frame\ Timeout=15
+Default\ Frames.Frame\ Timeout=5
 Default\ Frames.Marker\ Scale=1
 Default\ Frames.Show\ Arrows=0
 Default\ Frames.Show\ Axes=1

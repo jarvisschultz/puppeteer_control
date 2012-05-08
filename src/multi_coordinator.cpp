@@ -44,7 +44,9 @@
 #define ROBOT_CIRCUMFERENCE (57.5) // centimeters
 #define DEFAULT_RADIUS (ROBOT_CIRCUMFERENCE/M_PI/2.0/100.) // meters
 #define NUM_EKF_INITS (5)
+#define NUM_FRAME_DELAYS (5)
 #define DEFAULT_ERR  (10)
+#define MIN_FREQ (10.0) // Hz
 
 //---------------------------------------------------------------------------
 // Prototypes
@@ -91,7 +93,7 @@ public:
 	ROS_DEBUG("Creating publishers and subscribers");
 	timer = n_.
 	    createTimer(ros::Duration(0.033), &Coordinator::timercb, this);
-	robots_sub = n_.subscribe("robot_positions", 1,
+	robots_sub = n_.subscribe("robot_positions", 10,
 				  &Coordinator::datacb, this);
 	// get the number of robots
 	if (ros::param::has("/number_robots"))
@@ -199,6 +201,7 @@ public:
 	{
 	    ROS_DEBUG("datacb triggered with OC = %d",operating_condition);
 	    static bool first_flag = true;
+	    static ros::Time time;
 
 	    // if we aren't calibrating or running, let's just exit
 	    // this cb
@@ -219,8 +222,19 @@ public:
 	    	current_bots = b;
 	    	prev_bots = b;
 	    	first_flag = false;
+		time = ros::Time::now();
 	    	return;
 	    }
+
+	    // check for timeout:
+	    ros::Duration dt = ros::Time::now()-time;
+	    time = ros::Time::now();
+	    if (dt.toSec() > 1.0/MIN_FREQ)
+		ROS_WARN("Coordinator frequency dropping - %f Hz",
+			 1/dt.toSec());
+		
+
+	    // store arrangements:
 	    prev_bots = current_bots;
 	    current_bots = b;
 	    
@@ -278,10 +292,16 @@ public:
 	    {
 		if(calibrated_flag)
 		{
-		    if (num_delays > NUM_EKF_INITS)
-			process_robots();
-		    else
+		    if (num_delays < NUM_FRAME_DELAYS)
+		    {
 			num_delays++;
+			return;
+		    }
+		    else if (num_delays < NUM_EKF_INITS+NUM_FRAME_DELAYS)
+			process_robots(1);
+		    else
+			process_robots(operating_condition);
+		    num_delays++;
 		}
 		return;
 	    }
@@ -400,8 +420,8 @@ public:
 					    cal_pos(2)));
 	    transform.setRotation(tf::Quaternion(0,0,0,1));
 	    br.sendTransform(tf::StampedTransform(transform, tstamp,
-						  "oriented_optimization_frame",
-						  "optimization_frame"));
+						  "/oriented_optimization_frame",
+						  "/optimization_frame"));
 
 	    
 	    // Publish /map frame based on robot calibration
@@ -410,16 +430,16 @@ public:
 					    cal_pos(2)));
 	    transform.setRotation(tf::Quaternion(.707107,0.0,0.0,-0.707107));
 	    br.sendTransform(tf::StampedTransform(transform, tstamp,
-						  "oriented_optimization_frame",
-						  "map"));
+						  "/oriented_optimization_frame",
+						  "/map"));
 	    
 	    // publish one more frame that is the frame the robot
 	    // calculates its odometry in.
 	    transform.setOrigin(tf::Vector3(0,0,0));
 	    transform.setRotation(tf::Quaternion(1,0,0,0));
 	    br.sendTransform(tf::StampedTransform(transform, tstamp,
-						  "map",
-						  "robot_odom_pov"));
+						  "/map",
+						  "/robot_odom_pov"));
 	    ROS_DEBUG("frames sent");
 	    return;
 	}
@@ -630,12 +650,12 @@ public:
 
     // process_robots simply iterates through a sorted list of robots,
     // and sends the appropriate transforms and topics
-    void process_robots(void)
+    void process_robots(int op)
 	{
 	    for (int i=0; i<nr; i++)
 	    {
 		send_kinect_estimate(current_bots_sorted.robots[i],
-				     prev_bots_sorted.robots[i], i);
+				     prev_bots_sorted.robots[i], i, op);
 	    }
 	    return;
 	}
@@ -646,7 +666,8 @@ public:
     // kinect into an odometry message, and tranforming it to the same
     // frame that the ekf uses    
     void send_kinect_estimate(geometry_msgs::PointStamped pt,
-			      geometry_msgs::PointStamped ptlast, int index)
+			      geometry_msgs::PointStamped ptlast,
+			      int index, int op)
 	{
 	    ROS_DEBUG("send_kinect_estimate triggered");
 
@@ -711,7 +732,7 @@ public:
 	    tmp.point.z = 0.0;
 	    kin_pose[index].pose.pose.position = tmp.point;
 	    double theta = 0.0;
-	    if (operating_condition == 2)
+	    if (op == 2)
 	    {
 	    	theta = atan2(transpt.point.x-
 	    			     transptlast.point.x,
