@@ -127,7 +127,7 @@ public:
 	client = n_.serviceClient<puppeteer_msgs::speed_command>
 	    ("/speed_command");
 	// Define subscriber:
-	sub = n_.subscribe("pose_ekf", 1, &KinematicControl::subscriber_cb
+	sub = n_.subscribe("pose_ekf", 10, &KinematicControl::subscriber_cb
 			   , this);
 	// Define a timer and callback for checking system state:
 	timer = n_.createTimer(ros::Duration(0.1),
@@ -171,7 +171,7 @@ public:
     // pose
     void subscriber_cb(const nav_msgs::Odometry &pose)
 	{
-	    ROS_DEBUG("Subscriber callback triggered");
+	    ROS_DEBUG("pose subscriber callback triggered");
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);

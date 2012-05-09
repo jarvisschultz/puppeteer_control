@@ -93,7 +93,7 @@ public:
 	ROS_DEBUG("Creating publishers and subscribers");
 	timer = n_.
 	    createTimer(ros::Duration(0.033), &Coordinator::timercb, this);
-	robots_sub = n_.subscribe("robot_positions", 10,
+	robots_sub = n_.subscribe("robot_positions", 1,
 				  &Coordinator::datacb, this);
 	// get the number of robots
 	if (ros::param::has("/number_robots"))
@@ -110,10 +110,7 @@ public:
 	    // create publishers
 	    std::stringstream ss;
 	    ss << "/robot_" << j+1 << "/vo";
-	    robots_pub[j] = n_.advertise<nav_msgs::Odometry>(ss.str(), 1);
-
-	    // creating subscribers
-	    
+	    robots_pub[j] = n_.advertise<nav_msgs::Odometry>(ss.str(), 100);
 	}
 
 	// set operating condition to idle
