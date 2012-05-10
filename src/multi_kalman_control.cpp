@@ -51,6 +51,7 @@
 #define WIDTH	(0.1323340)
 #define MAX_TRANS_VEL  (2.25)
 #define MAX_ANG_VEL (30.0)
+#define MIN_COMM_FREQUENCY (10.0)
 std::string filename;
 char ch;
 
@@ -89,6 +90,7 @@ private:
     ros::ServiceClient client;
     ros::Subscriber sub;
     ros::Timer timer;
+    ros::Time service_time;
     ros::Publisher ref_pub, rpath_pub;
     puppeteer_msgs::speed_command srv;
     tf::TransformBroadcaster br;
@@ -130,12 +132,12 @@ public:
 	sub = n_.subscribe("pose_ekf", 10, &KinematicControl::subscriber_cb
 			   , this);
 	// Define a timer and callback for checking system state:
-	timer = n_.createTimer(ros::Duration(0.1),
+	timer = n_.createTimer(ros::Duration(0.033),
 			       &KinematicControl::timercb, this);
 	// Define a publisher for publishing the robot's reference pose
 	ref_pub = n_.advertise<nav_msgs::Odometry> ("reference_pose", 100);
 	rpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_robot", 100);
-
+	
 	// Read in the trajectory:
 	traj = ReadControls(filename);
 	// publish the robot results:
@@ -151,7 +153,10 @@ public:
 	// set flags:
 	cal_start_flag = true;
 	start_flag = true;
-    }
+
+    } // END OF KinematicControl()
+
+
 
     void timercb(const ros::TimerEvent& e)
 	{
@@ -159,13 +164,28 @@ public:
 	    int operating_condition = 0;
 	    ros::param::get("/operating_condition", operating_condition);
 
-	    if(operating_condition == 3 || operating_condition == 4)
+	    if( operating_condition == 0 ||
+		operating_condition == 3 ||
+		operating_condition == 4 )
 	    {
 		start_flag = true;
 		cal_start_flag = true;
 	    }
+	    else
+	    {
+		ros::Duration dt = ros::Time::now()-service_time;
+		ROS_DEBUG("time since last request = %6.5f",dt.toSec());
+		// if it has been awhile since sending the service,
+		// let's just re-send it to keep the robots from
+		// resetting.
+		if (dt.toSec() > 1/MIN_COMM_FREQUENCY)
+		    service_request();
+	    }
+	    
 	    return;
-	}
+	} // END OF timercb()
+
+
 
     // This gets called every time the estimator publishes a new robot
     // pose
@@ -274,27 +294,41 @@ public:
 		start_flag = true;
 		cal_start_flag = true;
 	    }
-	    
+
+	    service_request();
+	    return;
+	} // END OF subscribercb()
+
+
+    
+    void service_request(void)
+	{
+	    // set local time for current service call:
+	    service_time = ros::Time::now();
+
 	    // send request to service
 	    if(client.call(srv))
 	    {
-		if(srv.response.error == false)
-		    ROS_DEBUG("Send Successful: speed_command\n");
-		else
-		{
-		    ROS_DEBUG("Send Request Denied: speed_command\n");
-		    static bool request_denied_notify = true;
-		    if(request_denied_notify)
-		    {
-			ROS_WARN("Send Requests Denied: speed_command\n");
-			request_denied_notify = false;
-		    }
-		}
+	    	if(srv.response.error == false)
+	    	    ROS_DEBUG("Send Successful: speed_command\n");
+	    	else
+	    	{
+	    	    ROS_DEBUG("Send Request Denied: speed_command\n");
+	    	    static bool request_denied_notify = true;
+	    	    if(request_denied_notify)
+	    	    {
+	    		ROS_WARN("Send Requests Denied: speed_command\n");
+	    		request_denied_notify = false;
+	    	    }
+	    	}
 	    }
 	    else 
-		ROS_ERROR("Failed to call service: speed_command\n");
-	}
+	    	ROS_ERROR("Failed to call service: speed_command\n");
+	    return;
+	} // END OF service_request()
 
+
+    
     void get_desired_pose(float time, const nav_msgs::Odometry &p)
 	{
 	    ROS_DEBUG("Interpolating desired pose");
@@ -365,7 +399,9 @@ public:
 	    br.sendTransform(ref_trans);	    
 	    	    
 	    return;
-	}
+	}  // END OF get_desired_pose()
+
+
 
     // void get_control_values(const puppeteer_msgs::RobotPose &pose)
     void get_control_values(const nav_msgs::Odometry &p)
@@ -432,7 +468,9 @@ public:
 	    srv.request.div = 4;
 
 	    return;
-	}
+	} // END OF get_control_values()
+
+
 
     void send_start_flag(void)
 	{
@@ -463,7 +501,8 @@ public:
 	    }
 	    else 
 		ROS_ERROR("Failed to call service: speed_command\n");
-	}
+	    return;
+	} // END OF send_start_flag()
 
 
     Trajectory *ReadControls(std::string filename)
@@ -552,8 +591,9 @@ public:
 		ROS_ERROR("Initial angle returned NaN!");
 
 	    return traj;
-	}
+	} // END OF ReadControls()
 
+    
     double clamp_angle(const double theta)
 	{
 	    double th = theta;
@@ -584,7 +624,7 @@ public:
 	    ROS_DEBUG("Checking winch bool");
 	    ros::param::get("winch_bool", winch);
 	    ROS_DEBUG("winch_bool = %d", winch);	    
-
+	    return;
 	}
 
     void set_robot_path(void)
@@ -598,55 +638,8 @@ public:
 		path_r.poses[i].pose.position.y = traj->vals[i][2];
 		path_r.poses[i].pose.position.z = 0;
 	    }
+	    return;
 	}
-
-    // void set_mass_path(std::string filename)
-    // 	{
-    // 	    struct stat buf;
-    // 	    std::ifstream file;
-    // 	    std::string line, tempstr;
-    // 	    int num;
-    // 	    std::string newname;
-
-    // 	    newname = filename;
-    // 	    newname.resize(newname.size()-4);
-    // 	    newname += "_mass.txt";	    if(stat(newname.c_str(), &buf))
-    // 	    {
-    // 		ROS_INFO("No file describing mass trajectory found");
-    // 		return;
-    // 	    }
-    // 	    ROS_INFO("Reading mass trajectory: %s",newname.c_str());
-    // 	    file.open(newname.c_str(), std::fstream::in);
-
-    // 	    // read num:
-    // 	    file >> line;
-    // 	    file >> num;
-
-    // 	    path_m.poses.resize(num);
-    // 	    path_m.header.frame_id = "optimization_frame";
-
-    // 	    ROS_DEBUG("number of points in mass file = %d",num);
-
-    // 	    for (int i=0; i<num; i++)
-    // 	    {
-    // 	    	getline(file,line,',');
-    // 	    	// path_m.poses[i].header.stamp = temp;
-    // 	    	path_m.poses[i].header.frame_id = "optimization_frame";
-		
-    // 	    	getline(file,line,',');
-    // 		path_m.poses[i].pose.position.x = fromString<double>(line);
-    // 	    	getline(file,line,',');
-    // 		path_m.poses[i].pose.position.y = fromString<double>(line);
-    // 	    	getline(file,line);
-    // 		path_m.poses[i].pose.position.z = fromString<double>(line);
-    // 	    }
-    // 	    file.close();
-
-    // 	    // set the mass initial parameters
-    // 	    ros::param::set("mass_x0", path_m.poses[0].pose.position.x);
-    // 	    ros::param::set("mass_y0", path_m.poses[0].pose.position.y);
-    // 	    ros::param::set("mass_z0", path_m.poses[0].pose.position.z);
-    // 	}
 };
 
 // command_line parsing:
