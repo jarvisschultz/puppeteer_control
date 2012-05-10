@@ -196,7 +196,8 @@ public:
     
     void datacb(const puppeteer_msgs::Robots &bots)
 	{
-	    ROS_DEBUG("datacb triggered with OC = %d",operating_condition);
+	    ROS_DEBUG("coordinator datacb triggered with OC = %d",
+		     operating_condition);
 	    static bool first_flag = true;
 	    static ros::Time time;
 
@@ -267,7 +268,7 @@ public:
     void timercb(const ros::TimerEvent& e)
 	{
 	    static int num_delays = 0;
-	    ROS_DEBUG("timercb triggered");
+	    ROS_DEBUG("coordinator timercb triggered");
 	    if (gen_flag)
 	    {
 		// Generate the robot ordering vector
@@ -762,6 +763,7 @@ public:
 
 	    // Now let's publish the estimated pose as a
 	    // nav_msgs/Odometry message on a topic called /vo
+	    ROS_DEBUG("publishing /vo for robot %d", index+1);
 	    robots_pub[index].publish(kin_pose[index]);
 
 	    // now, let's publish the transforms that goes along with it

@@ -155,7 +155,7 @@ public:
 
     void timercb(const ros::TimerEvent& e)
 	{
-	    ROS_DEBUG("Timer callback triggered");
+	    ROS_DEBUG("Control timer callback triggered");
 	    int operating_condition = 0;
 	    ros::param::get("/operating_condition", operating_condition);
 
@@ -171,7 +171,7 @@ public:
     // pose
     void subscriber_cb(const nav_msgs::Odometry &pose)
 	{
-	    ROS_DEBUG("pose subscriber callback triggered");
+	    ROS_DEBUG("Control pose subscriber triggered");
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
@@ -186,7 +186,7 @@ public:
 	    {
 		if (cal_start_flag == true)
 		{
-		    ROS_INFO("Sending initial pose.");
+		    ROS_DEBUG("Sending initial pose.");
 
 		    // set parameters for sending initial pose
 		    srv.request.robot_index = traj->RobotMY;
@@ -286,7 +286,7 @@ public:
 		    static bool request_denied_notify = true;
 		    if(request_denied_notify)
 		    {
-			ROS_INFO("Send Requests Denied: speed_command\n");
+			ROS_WARN("Send Requests Denied: speed_command\n");
 			request_denied_notify = false;
 		    }
 		}
@@ -456,7 +456,7 @@ public:
 		    static bool request_denied_notify = true;
 		    if(request_denied_notify)
 		    {
-			ROS_INFO("Send Requests Denied: speed_command\n");
+			ROS_WARN("Send Requests Denied: speed_command\n");
 			request_denied_notify = false;
 		    }
 		}
@@ -727,8 +727,6 @@ void command_line_parser(int argc, char** argv)
 	// since we did spec it, let's set it
 	ros::param::set("robot_index", robot_index);
     }
-	
-	    
   
     // Get filenames:
     filename = working_dir + file;
