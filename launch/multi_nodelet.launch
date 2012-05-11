@@ -37,7 +37,7 @@
 
   <!-- launch the coordinator node -->
   <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
-  <!-- launch-prefix=xterm -rv -e gdb args -->
+  <!-- 	launch-prefix=xterm -rv -e gdb args /> -->
   <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
   	output="screen" required="true" />
 

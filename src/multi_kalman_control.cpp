@@ -88,13 +88,11 @@ private:
     int operating_condition;
     Trajectory *traj;
     ros::NodeHandle n_;
-    // ros::ServiceClient client;
     ros::Publisher serial_pub;
     ros::Subscriber sub;
     ros::Timer timer;
     ros::Time service_time;
     ros::Publisher ref_pub, rpath_pub;
-    // puppeteer_msgs::speed_command srv;
     puppeteer_msgs::RobotCommands command;
     tf::TransformBroadcaster br;
     nav_msgs::Odometry ref_pose;
@@ -106,6 +104,9 @@ private:
     // Controller gains
     float k1, k2, k3;
     float zeta, b;
+    // Key times
+    ros::Time base_time;
+    ros::Time current_time;
 
 
 public:
@@ -128,10 +129,6 @@ public:
 	    ros::param::set("winch_bool",false);
 	}
 	
-	// Define service client:
-	// client = n_.serviceClient<puppeteer_msgs::speed_command>
-	//     ("/speed_command");
-
 	// Define publisher for the serial commands:
 	serial_pub = n_.advertise<puppeteer_msgs::RobotCommands>
 	    ("serial_commands", 1);
@@ -202,7 +199,6 @@ public:
 	{
 	    ROS_DEBUG("Control pose subscriber triggered");
 	    static double running_time = 0.0;
-	    static ros::Time base_time;
 	    ros::param::get("/operating_condition", operating_condition);
 	    
 	    if (operating_condition == 0 || operating_condition == 3)
@@ -219,6 +215,7 @@ public:
 
 		    // set parameters for sending initial pose
 		    command.robot_index = traj->RobotMY;
+		    command.header.stamp = ros::Time::now();
 		    command.type = 'l';
 		    command.x = traj->vals[0][1];
 		    command.y = traj->vals[0][2];
@@ -242,6 +239,7 @@ public:
 
 		    // set parameters for sending initial pose
 		    command.robot_index = traj->RobotMY;
+		    command.header.stamp = ros::Time::now();
 		    command.type = 'l';
 		    command.x = traj->vals[0][1];
 		    command.y = traj->vals[0][2];
@@ -251,7 +249,7 @@ public:
 		    command.div = 4;
 
 		    start_flag = false;
-		    base_time = ros::Time::now();
+		    base_time = command.header.stamp;
 		    ROS_DEBUG("Setting Base Time to %f",base_time.toSec());
 
 		    // check if we are running the winch:
@@ -264,8 +262,8 @@ public:
 		{
 		    // we will run the regular control loop
 		    // let's first get the expected pose at the given time:
-		    running_time = ((ros::Time::now()).toSec()-
-				    base_time.toSec());
+		    current_time = ros::Time::now();
+		    running_time = (current_time-base_time).toSec();
 		    ROS_DEBUG("Running time is %f", running_time);
 		    ROS_DEBUG("Final time is %f", traj->vals[num-1][0]);
 		    // check that running_time is less than the final time:
@@ -279,6 +277,7 @@ public:
 			// stop robot!
 			ROS_INFO("Trajectory Finished!");
 			command.robot_index = 9;
+			command.header.stamp = ros::Time::now();
 			command.type = 'h';
 			command.v_left = 0.0;
 			command.v_right = 0.0;
@@ -295,6 +294,7 @@ public:
 	    {
 		ROS_WARN("Emergency Stop Detected!");
 		command.robot_index = traj->RobotMY;
+		command.header.stamp = ros::Time::now();
 		command.type = 'h';
 		command.v_left = 0.0;
 		command.v_right = 0.0;
@@ -448,6 +448,7 @@ public:
 
 	    // Set service parameters:
 	    command.robot_index = traj->RobotMY;
+	    command.header.stamp = current_time;
 	    command.type = 'd';
 	    command.v_robot = v;
 	    command.w_robot = omega;
@@ -468,6 +469,7 @@ public:
 	    ROS_DEBUG("Sending start flag");
 	    // First set the parameters for the service call
 	    command.robot_index = traj->RobotMY;
+	    command.header.stamp = ros::Time::now();
 	    command.type = 'm';
 	    command.div = 0;
 	    serial_pub.publish(command);
