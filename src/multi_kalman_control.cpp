@@ -21,8 +21,9 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 
-#include <puppeteer_msgs/speed_command.h>
-#include <puppeteer_msgs/RobotPose.h>
+#include "puppeteer_msgs/speed_command.h"
+#include "puppeteer_msgs/RobotPose.h"
+#include "puppeteer_msgs/RobotCommands.h"
 
 
 #include <stdio.h>
@@ -87,12 +88,14 @@ private:
     int operating_condition;
     Trajectory *traj;
     ros::NodeHandle n_;
-    ros::ServiceClient client;
+    // ros::ServiceClient client;
+    ros::Publisher serial_pub;
     ros::Subscriber sub;
     ros::Timer timer;
     ros::Time service_time;
     ros::Publisher ref_pub, rpath_pub;
-    puppeteer_msgs::speed_command srv;
+    // puppeteer_msgs::speed_command srv;
+    puppeteer_msgs::RobotCommands command;
     tf::TransformBroadcaster br;
     nav_msgs::Odometry ref_pose;
     nav_msgs::Path path_m, path_r;
@@ -126,8 +129,13 @@ public:
 	}
 	
 	// Define service client:
-	client = n_.serviceClient<puppeteer_msgs::speed_command>
-	    ("/speed_command");
+	// client = n_.serviceClient<puppeteer_msgs::speed_command>
+	//     ("/speed_command");
+
+	// Define publisher for the serial commands:
+	serial_pub = n_.advertise<puppeteer_msgs::RobotCommands>
+	    ("serial_commands", 1);
+	
 	// Define subscriber:
 	sub = n_.subscribe("pose_ekf", 10, &KinematicControl::subscriber_cb
 			   , this);
@@ -144,6 +152,7 @@ public:
 	set_robot_path();
 		
 	// Send a start flag:
+	ros::Duration(0.5).sleep();
 	send_start_flag();
 	
 	// set control gain values:
@@ -209,14 +218,14 @@ public:
 		    ROS_DEBUG("Sending initial pose.");
 
 		    // set parameters for sending initial pose
-		    srv.request.robot_index = traj->RobotMY;
-		    srv.request.type = 'l';
-		    srv.request.Vleft = traj->vals[0][1];
-		    srv.request.Vright = traj->vals[0][2];
-		    srv.request.Vtop = atan2(
+		    command.robot_index = traj->RobotMY;
+		    command.type = 'l';
+		    command.x = traj->vals[0][1];
+		    command.y = traj->vals[0][2];
+		    command.th = atan2(
 			traj->vals[1][2]-traj->vals[0][2],
 			traj->vals[1][1]-traj->vals[0][1]);
-		    srv.request.div = 4;
+		    command.div = 4;
 
 		    cal_start_flag = false;
 		}
@@ -232,14 +241,14 @@ public:
 		    ROS_INFO("Beginning movement execution");
 
 		    // set parameters for sending initial pose
-		    srv.request.robot_index = traj->RobotMY;
-		    srv.request.type = 'l';
-		    srv.request.Vleft = traj->vals[0][1];
-		    srv.request.Vright = traj->vals[0][2];
-		    srv.request.Vtop = atan2(
+		    command.robot_index = traj->RobotMY;
+		    command.type = 'l';
+		    command.x = traj->vals[0][1];
+		    command.y = traj->vals[0][2];
+		    command.th = atan2(
 			traj->vals[1][2]-traj->vals[0][2],
 			traj->vals[1][1]-traj->vals[0][1]);
-		    srv.request.div = 4;
+		    command.div = 4;
 
 		    start_flag = false;
 		    base_time = ros::Time::now();
@@ -269,12 +278,12 @@ public:
 		    {
 			// stop robot!
 			ROS_INFO("Trajectory Finished!");
-			srv.request.robot_index = 9;
-			srv.request.type = 'h';
-			srv.request.Vleft = 0.0;
-			srv.request.Vright = 0.0;
-			srv.request.Vtop = 0.0;
-			srv.request.div = 3;
+			command.robot_index = 9;
+			command.type = 'h';
+			command.v_left = 0.0;
+			command.v_right = 0.0;
+			command.v_top = 0.0;
+			command.div = 3;
 			// set operating_condition to stop
 			ros::param::set("/operating_condition", 3);
 			start_flag = true;
@@ -285,12 +294,12 @@ public:
 	    else if (operating_condition == 4)
 	    {
 		ROS_WARN("Emergency Stop Detected!");
-		srv.request.robot_index = traj->RobotMY;
-		srv.request.type = 'h';
-		srv.request.Vleft = 0.0;
-		srv.request.Vright = 0.0;
-		srv.request.Vtop = 0.0;
-		srv.request.div = 3;
+		command.robot_index = traj->RobotMY;
+		command.type = 'h';
+		command.v_left = 0.0;
+		command.v_right = 0.0;
+		command.v_top = 0.0;
+		command.div = 3;
 		start_flag = true;
 		cal_start_flag = true;
 	    }
@@ -305,25 +314,7 @@ public:
 	{
 	    // set local time for current service call:
 	    service_time = ros::Time::now();
-
-	    // send request to service
-	    if(client.call(srv))
-	    {
-	    	if(srv.response.error == false)
-	    	    ROS_DEBUG("Send Successful: speed_command\n");
-	    	else
-	    	{
-	    	    ROS_DEBUG("Send Request Denied: speed_command\n");
-	    	    static bool request_denied_notify = true;
-	    	    if(request_denied_notify)
-	    	    {
-	    		ROS_WARN("Send Requests Denied: speed_command\n");
-	    		request_denied_notify = false;
-	    	    }
-	    	}
-	    }
-	    else 
-	    	ROS_ERROR("Failed to call service: speed_command\n");
+	    serial_pub.publish(command);
 	    return;
 	} // END OF service_request()
 
@@ -456,16 +447,16 @@ public:
 	    ROS_DEBUG("Sending control values: v = %f\tw = %f",v,omega);
 
 	    // Set service parameters:
-	    srv.request.robot_index = traj->RobotMY;
-	    srv.request.type = 'd';
-	    srv.request.Vleft = v;
-	    srv.request.Vright = omega;
+	    command.robot_index = traj->RobotMY;
+	    command.type = 'd';
+	    command.v_robot = v;
+	    command.w_robot = omega;
 
 	    if (winch)
-		srv.request.Vtop = rdotd;
+		command.rdot = rdotd;
 	    else
-		srv.request.Vtop = 0.0;  //  Disable winches
-	    srv.request.div = 4;
+		command.rdot = 0.0;  //  Disable winches
+	    command.div = 4;
 
 	    return;
 	} // END OF get_control_values()
@@ -476,31 +467,10 @@ public:
 	{
 	    ROS_DEBUG("Sending start flag");
 	    // First set the parameters for the service call
-	    srv.request.robot_index = traj->RobotMY;
-	    srv.request.type = 'm';
-	    srv.request.Vleft = 0.0;
-	    srv.request.Vright = 0.0;
-	    srv.request.Vtop = 0.0;
-	    srv.request.div = 0;
-
-	    // send request to service
-	    if(client.call(srv))
-	    {
-		if(srv.response.error == false)
-		    ROS_DEBUG("Send Successful: speed_command\n");
-		else
-		{
-		    ROS_DEBUG("Send Request Denied: speed_command\n");
-		    static bool request_denied_notify = true;
-		    if(request_denied_notify)
-		    {
-			ROS_WARN("Send Requests Denied: speed_command\n");
-			request_denied_notify = false;
-		    }
-		}
-	    }
-	    else 
-		ROS_ERROR("Failed to call service: speed_command\n");
+	    command.robot_index = traj->RobotMY;
+	    command.type = 'm';
+	    command.div = 0;
+	    serial_pub.publish(command);
 	    return;
 	} // END OF send_start_flag()
 

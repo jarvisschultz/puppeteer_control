@@ -26,7 +26,7 @@
   <include file="$(find objecttracker_nu)/launch/nodelet_multi_robot.launch" />
 
   <!--now let's launch the serial node-->
-  <node pkg="serial_node" type="multi_serial_node" name="serial_node"
+  <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
   	output="log" respawn="true" launch-prefix="xterm -rv -e"/>
 
   <!-- launch rviz if "vis"=true: -->
@@ -107,7 +107,7 @@
 
 
   <!--launch the keyboard node-->
-  <node pkg="keyboard_node" type="keyboard_node"
+  <node pkg="keyboard_node" type="multi_keyboard_node"
 	name="keyboard_interface" output="screen" respawn="true"
 	launch-prefix="xterm -rv -e" />
 
