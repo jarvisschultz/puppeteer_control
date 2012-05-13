@@ -66,6 +66,12 @@ template<typename T>
      stream >> t;
      return t;
 }
+
+bool fexists(const char *filename)
+{
+    std::ifstream ifile(filename);
+    return ifile;
+}
 //---------------------------------------------------------------------------
 // Class Definitions
 //---------------------------------------------------------------------------
@@ -475,6 +481,13 @@ public:
 	    std::string line, temp;
 	    Trajectory *traj;
 	    std::ifstream file;
+	    if (!fexists(filename.c_str()))
+	    {
+		ROS_ERROR("File does not exist!");
+		ROS_ERROR("%s", filename.c_str());
+		exit(0);
+	    }
+
 	    file.open(filename.c_str(), std::fstream::in);
 	    // Read line telling us the number of data points:
 	    getline(file, line);
@@ -612,7 +625,8 @@ public:
 
 	    newname = filename;
 	    newname.resize(newname.size()-4);
-	    newname += "_mass.txt";	    if(stat(newname.c_str(), &buf))
+	    newname += "_mass.txt";
+	    if(stat(newname.c_str(), &buf))
 	    {
 		ROS_INFO("No file describing mass trajectory found");
 		return;

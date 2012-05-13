@@ -32,12 +32,12 @@
   <arg name="file" default="default.txt" />
   <arg name="dir" default="$(find puppeteer_control)/data/" />
   <node pkg="puppeteer_control" type="kalman_controller"
-	name="kinematic_controller" output="screen" respawn="false"
+	name="kinematic_controller" output="screen" required="true"
 	cwd="node" args="-f $(arg file) -p $(arg dir)"/>
 
   <!--launch the estimator node-->
   <node pkg="estimator_node" type="kalman_estimator"
-	name="kalman_estimator" output="screen" respawn="true" />
+  	name="kalman_estimator" output="screen" respawn="true" />
 
   <!--launch the keyboard node-->
   <node pkg="keyboard_node" type="keyboard_node"
@@ -46,6 +46,6 @@
 
   <!--launch the filtering node-->
   <node pkg="filtering_node" type="ekf_filter"
-	name="ekf_implementation" output="screen" respawn="true" />
+  	name="ekf_implementation" output="screen" respawn="true" />
 
 </launch>
