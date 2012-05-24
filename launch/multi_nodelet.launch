@@ -69,7 +69,7 @@
 	  name="$(arg index)_ekf" output="screen" respawn="true" />
     <!-- start serial node -->
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-	  output="log" respawn="true" />
+	  output="log" respawn="true" launch-prefix="xterm -rv -e"/>
   </group>
 
 
@@ -92,7 +92,7 @@
     	  name="$(arg index)_ekf" output="screen" respawn="true" />
     <!-- start serial node -->
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-	  output="log" respawn="true" />
+	  output="log" respawn="true" launch-prefix="xterm -rv -e"/>
   </group>
 
 
@@ -115,7 +115,7 @@
     	  name="$(arg index)_ekf" output="screen" respawn="true" />
     <!-- start serial node -->
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-	  output="log" respawn="true" />
+	  output="log" respawn="true" launch-prefix="xterm -rv -e"/>
   </group>
 
 
