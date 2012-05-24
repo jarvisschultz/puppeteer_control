@@ -26,8 +26,8 @@
   <include file="$(find objecttracker_nu)/launch/nodelet_multi_robot.launch" />
 
   <!--now let's launch the serial node-->
-  <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-  	output="log" respawn="true" launch-prefix="xterm -rv -e"/>
+  <!-- <node pkg="serial_node" type="multi_serial_topic" name="serial_node" -->
+  <!-- 	output="log" respawn="true" launch-prefix="xterm -rv -e"/>  -->
 
   <!-- launch rviz if "vis"=true: -->
   <group if="$(arg vis)">
@@ -41,6 +41,11 @@
   <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
   	output="screen" required="true" />
 
+  <!-- set all of the parameters for launching the serial node for
+       each robot.  Note that this file actually gets read by the
+       sorter_serial.py node to determine which index goes with which
+       namespace.  If we change robot indices, we must re-run the sorting node. -->
+  <rosparam file="$(find serial_node)/data/serial_device_dict.xml" command="load"/>
 
 
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -62,6 +67,9 @@
     <!--launch the filtering node-->
     <node pkg="filtering_node" type="multi_ekf_filter"
 	  name="$(arg index)_ekf" output="screen" respawn="true" />
+    <!-- start serial node -->
+    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
+	  output="log" respawn="true" />
   </group>
 
 
@@ -82,6 +90,9 @@
     <!-- launch the filtering node -->
     <node pkg="filtering_node" type="multi_ekf_filter"
     	  name="$(arg index)_ekf" output="screen" respawn="true" />
+    <!-- start serial node -->
+    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
+	  output="log" respawn="true" />
   </group>
 
 
@@ -102,6 +113,9 @@
     <!-- launch the filtering node -->
     <node pkg="filtering_node" type="multi_ekf_filter"
     	  name="$(arg index)_ekf" output="screen" respawn="true" />
+    <!-- start serial node -->
+    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
+	  output="log" respawn="true" />
   </group>
 
 
