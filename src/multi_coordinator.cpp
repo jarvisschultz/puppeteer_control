@@ -93,7 +93,7 @@ public:
 	ROS_DEBUG("Creating publishers and subscribers");
 	timer = n_.
 	    createTimer(ros::Duration(0.033), &Coordinator::timercb, this);
-	robots_sub = n_.subscribe("robot_positions", 1,
+	robots_sub = n_.subscribe("robot_positions", 100,
 				  &Coordinator::datacb, this);
 	// get the number of robots
 	if (ros::param::has("/number_robots"))
