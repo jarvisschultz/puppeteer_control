@@ -91,8 +91,8 @@ private:
 public:
     Coordinator() {
 	ROS_DEBUG("Creating publishers and subscribers");
-	timer = n_.
-	    createTimer(ros::Duration(0.033), &Coordinator::timercb, this);
+	// timer = n_.
+	//     createTimer(ros::Duration(0.033), &Coordinator::timercb, this);
 	robots_sub = n_.subscribe("robot_positions", 100,
 				  &Coordinator::datacb, this);
 	// get the number of robots
@@ -201,6 +201,8 @@ public:
 	    static bool first_flag = true;
 	    static ros::Time time;
 
+	    timercb();
+
 	    // if we aren't calibrating or running, let's just exit
 	    // this cb
 	    if (operating_condition != 2 && operating_condition != 1)
@@ -208,7 +210,6 @@ public:
 	    puppeteer_msgs::Robots b;
 	    b.robots.resize(bots.robots.size());
 	    b = bots;
-
 	    tstamp = ros::Time::now();
 	    
 	    // correct the points in bots
@@ -239,17 +240,17 @@ public:
 	    // do we need to calibrate?
 	    if ( !calibrated_flag )
 	    {
-		if ((int) current_bots.robots.size() == nr)
-		{
-		    prev_bots_sorted = current_bots_sorted;
-		    current_bots_sorted = calibrate_routine();
-		}
+	    	if ((int) current_bots.robots.size() == nr)
+	    	{
+	    	    prev_bots_sorted = current_bots_sorted;
+	    	    current_bots_sorted = calibrate_routine();
+	    	}
 	    	return;
 	    }
 	    
 	    // send all relevant transforms
 	    if (calibrated_flag)
-		send_frames();
+	    	send_frames();
 
 	    // If we got here, we are calibrated.  That means we can
 	    // sort robots based on previous locations
@@ -259,15 +260,19 @@ public:
 	    // print_bots("tmp_bots (before)",tmp);
 	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
 	    prev_bots_sorted = tmp;
-
+	    
 	    return;
 	}
 	
     
 
-    void timercb(const ros::TimerEvent& e)
+    // void timercb(const ros::TimerEvent& e)
+    void timercb(void) 
 	{
 	    static int num_delays = 0;
+	    static ros::Time t1;
+	    t1 = ros::Time::now();
+
 	    ROS_DEBUG("coordinator timercb triggered");
 	    if (gen_flag)
 	    {
@@ -298,7 +303,13 @@ public:
 		    else if (num_delays < NUM_EKF_INITS+NUM_FRAME_DELAYS)
 			process_robots(1);
 		    else
+		    {
 			process_robots(operating_condition);
+			ROS_INFO("Done processing and sending robot info : %f sec (%f Hz)",
+				 (ros::Time::now()-t1).toSec(),
+				 1/(ros::Time::now()-t1).toSec());
+			t1 = ros::Time::now();
+		    }
 		    num_delays++;
 		}
 		return;
