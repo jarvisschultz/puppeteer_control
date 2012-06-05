@@ -15,7 +15,7 @@
   <!-- SET GLOBAL PARAMETERS --> 
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <param name="/winch_bool" type="bool" value="$(arg winch)" />
-  <param name="/number_robots" type="int" value='3' />
+  <param name="/number_robots" type="int" value="3" />
 
 
 
@@ -24,7 +24,8 @@
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <!-- launch kinect and tracker node/ nodelets -->
   <!-- <include file="$(find objecttracker_nu)/launch/nodelet_multi_robot.launch" /> -->
-  <include file="$(find objecttracker_nu)/launch/multi_robot_tracking.launch"/>
+  <!-- <include file="$(find objecttracker_nu)/launch/multi_robot_tracking.launch"/> -->
+  <include file="$(find objecttracker_nu)/launch/optimization_frame_broadcaster.launch"/>
 
   <!-- launch rviz if "vis"=true: -->
   <group if="$(arg vis)">
@@ -35,8 +36,8 @@
   <!-- launch the coordinator node -->
   <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
   <!-- 	launch-prefix=xterm -rv -e gdb args /> -->
-  <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
-  	output="screen" required="true" />
+  <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
+  <!-- 	output="screen" required="true" /> -->
 
   <!-- set all of the parameters for launching the serial node for
        each robot.  Note that this file actually gets read by the
@@ -66,7 +67,7 @@
   	  name="$(arg index)_ekf" output="screen" respawn="true" />
     <!-- start serial node -->
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-    	  output="log" respawn="true" launch-prefix="xterm -rv -e"/>
+    	  output="log" respawn="true" />
   </group>
 
 
@@ -89,7 +90,7 @@
     	  name="$(arg index)_ekf" output="screen" respawn="true" />
     <!-- start serial node -->
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-    	  output="log" respawn="true" launch-prefix="xterm -rv -e"/>
+    	  output="log" respawn="true" />
   </group>
 
 
@@ -112,7 +113,7 @@
     	  name="$(arg index)_ekf" output="screen" respawn="true" />
     <!-- start serial node -->
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-    	  output="log" respawn="true" launch-prefix="xterm -rv -e"/>
+    	  output="log" respawn="true" />
   </group>
 
 

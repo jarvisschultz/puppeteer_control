@@ -196,6 +196,11 @@ public:
     
     void datacb(const puppeteer_msgs::Robots &bots)
 	{
+	    // static ros::Time freqtime;
+	    // ROS_DEBUG("datacb time = %f seconds (%f Hz)",
+	    // 	     (ros::Time::now()-freqtime).toSec(), 1/(ros::Time::now()-freqtime).toSec());
+	    // freqtime = ros::Time::now();
+	    
 	    ROS_DEBUG("coordinator datacb triggered with OC = %d",
 		     operating_condition);
 	    static bool first_flag = true;
@@ -206,7 +211,7 @@ public:
 	    // if we aren't calibrating or running, let's just exit
 	    // this cb
 	    if (operating_condition != 2 && operating_condition != 1)
-		return;
+	    	return;
 	    puppeteer_msgs::Robots b;
 	    b.robots.resize(bots.robots.size());
 	    b = bots;
@@ -305,7 +310,11 @@ public:
 		    else
 		    {
 			process_robots(operating_condition);
-			ROS_INFO("Done processing and sending robot info : %f sec (%f Hz)",
+			// static ros::Time freqtime;
+			// ROS_INFO("done with publish = %f seconds (%f Hz)",
+			// 	 (ros::Time::now()-freqtime).toSec(), 1/(ros::Time::now()-freqtime).toSec());
+			// freqtime = ros::Time::now();
+			ROS_DEBUG("Done processing and sending robot info : %f sec (%f Hz)",
 				 (ros::Time::now()-t1).toSec(),
 				 1/(ros::Time::now()-t1).toSec());
 			t1 = ros::Time::now();
