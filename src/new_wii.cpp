@@ -58,15 +58,11 @@ private:
     int operating_condition;
     ros::NodeHandle n_;
     ros::Publisher serial_pub;
-    // ros::ServiceClient client[2];
     ros::Subscriber sub;
     ros::Timer timer;
-    // puppeteer_msgs::speed_command srv;
-    // puppeteer_msgs::long_command lng;
     puppeteer_msgs::RobotCommands cmd;
     wiimote::State wii_state;
     int robot_index;
-    bool lng_cmd;
     ros::Time wiitime;
     bool wii_control;
     
@@ -96,21 +92,11 @@ public:
 	    ("/robot_1/serial_commands", 1);
 	
 	// set default values:
-	// srv.request.type = (uint8_t) 'h';
-	// lng.request.type = (uint8_t) 'n';
-	// srv.request.div = 3;
-	// lng.request.div = 3;
 	cmd.robot_index = robot_index;
 	cmd.div = 3;
-	lng_cmd = false;
 	wii_control = true;
 	wiitime = ros::Time::now();
 
-	// Define service client:
-	// client[0] = n_.serviceClient<puppeteer_msgs::speed_command>
-	//     ("speed_command");
-	// client[1] = n_.serviceClient<puppeteer_msgs::long_command>
-	//     ("long_command");
 	// Define subscriber:
 	sub = n_.subscribe("/wiimote/state", 1, &WiiControl::subscriber_cb
 			   , this);
@@ -127,8 +113,6 @@ public:
 	    int operating_condition = 0;
 	    ros::param::get("/operating_condition", operating_condition);
 	    ros::param::get("robot_index", robot_index);
-	    // srv.request.robot_index = robot_index;
-	    // lng.request.robot_index = robot_index;
 	    cmd.robot_index = robot_index;
 	    
 	    if (kbhit()) keyboard_interpreter();
@@ -139,12 +123,7 @@ public:
 	    {
 		ROS_WARN_THROTTLE(1,"wiimote timeout detected!");
 		ros::param::set("/operating_condition", 4);
-		lng_cmd = false;
 		cmd.type = (uint8_t) 'q';
-		// srv.request.type = (uint8_t) 'q';
-		// srv.request.Vleft = 0.0;
-		// srv.request.Vright = 0.0;
-		// srv.request.Vtop = 0.0;
 	    }
 		    
 
@@ -152,49 +131,6 @@ public:
 	    if (operating_condition == 2 && wii_control)
 	    {
 		serial_pub.publish(cmd);
-		
-		// // send request to service
-		// if (lng_cmd)
-		// {
-		//     if(client[1].call(lng))
-		//     {
-		// 	if(lng.response.error == false)
-		// 	    ROS_DEBUG("Send Successful: long_command\n");
-		// 	else
-		// 	{
-		// 	    ROS_DEBUG("Send Request Denied: long_command\n");
-		// 	    static bool request_denied_notify = true;
-		// 	    if(request_denied_notify)
-		// 	    {
-		// 		ROS_INFO("Send Requests Denied: long_command\n");
-		// 		request_denied_notify = false;
-		// 	    }
-		// 	}
-		//     }
-		//     else 
-		// 	ROS_ERROR("Failed to call service: long_command\n");
-
-		// }
-		// else
-		// {
-		//     if(client[0].call(srv))
-		//     {
-		// 	if(srv.response.error == false)
-		// 	    ROS_DEBUG("Send Successful: speed_command\n");
-		// 	else
-		// 	{
-		// 	    ROS_DEBUG("Send Request Denied: speed_command\n");
-		// 	    static bool request_denied_notify = true;
-		// 	    if(request_denied_notify)
-		// 	    {
-		// 		ROS_INFO("Send Requests Denied: speed_command\n");
-		// 		request_denied_notify = false;
-		// 	    }
-		// 	}
-		//     }
-		//     else 
-		// 	ROS_ERROR("Failed to call service: speed_command\n");
-		// }
 	    }
 	    return;
 	}
@@ -206,7 +142,6 @@ public:
 	    wiitime = s.header.stamp;
 	    ROS_DEBUG("Subscriber callback triggered");
 	    // set_leds();
-	    lng_cmd = false;
 
 	    // if A is pressed, we are driving:
 	    if(s.buttons[4])
@@ -230,12 +165,6 @@ public:
 		cmd.v_top = 0.0;
 		cmd.div = 3;
 		
-		// srv.request.robot_index = robot_index;
-		// srv.request.type = (uint8_t) 'h';
-		// srv.request.Vleft = lspeed;
-		// srv.request.Vright = rspeed;
-		// srv.request.Vtop = 0.0;
-		// srv.request.div = 3;
 	    }
 	    // is down pressed?
 	    else if (s.buttons[7])
@@ -252,12 +181,6 @@ public:
 		cmd.v_top = tspeed;
 		cmd.div = 3;
 		
-		// srv.request.robot_index = robot_index;
-		// srv.request.type = (uint8_t) 'h';
-		// srv.request.Vleft = 0.0;
-		// srv.request.Vright = 0.0;
-		// srv.request.Vtop = tspeed;
-		// srv.request.div = 3;
 	    }
 	    // is left pressed?
 	    else if (s.buttons[8])
@@ -267,7 +190,6 @@ public:
 		float tspeed = yval*KHEIGHT;
 		if (s.buttons[5])
 		    tspeed *= 2.0;
-		lng_cmd = true;
 		cmd.robot_index = robot_index;
 		cmd.type = (uint8_t) 'n';
 		cmd.v_left = 0;
@@ -277,14 +199,6 @@ public:
 		cmd.v_top_right = 0;
 		cmd.div = 3;
 		
-		// lng.request.robot_index = robot_index;
-		// lng.request.type = (uint8_t) 'n';
-		// lng.request.num1 = 0;
-		// lng.request.num2 = 0;
-		// lng.request.num3 = tspeed;
-		// lng.request.num4 = 0;		
-		// lng.request.num5 = 0;
-		// lng.request.div = 3;				
 	    }
 	    // is right pressed?
 	    else if (s.buttons[9])
@@ -294,7 +208,6 @@ public:
 		float tspeed = yval*KHEIGHT;
 		if (s.buttons[5])
 		    tspeed *= 2.0;
-		lng_cmd = true;
 
 		cmd.robot_index = robot_index;
 		cmd.type = (uint8_t) 'n';
@@ -305,14 +218,6 @@ public:
 		cmd.v_top_right = tspeed;
 		cmd.div = 3;
 
-		// lng.request.robot_index = robot_index;
-		// lng.request.type = (uint8_t) 'n';
-		// lng.request.num1 = 0;
-		// lng.request.num2 = 0;
-		// lng.request.num3 = 0;
-		// lng.request.num4 = tspeed;		
-		// lng.request.num5 = 0;
-		// lng.request.div = 3;				
 	    }
 	    // any middle buttons, set operating condition to zero
 	    else if (s.buttons[2] || s.buttons[3] || s.buttons[10])
@@ -328,10 +233,6 @@ public:
 		cmd.v_top_right = 0;
 		cmd.div = 3;
 
-		// srv.request.type = (uint8_t) 'h';
-		// srv.request.Vleft = 0.0;
-		// srv.request.Vright = 0.0;
-		// srv.request.Vtop = 0.0;
 	    }
 	    else if (s.buttons[0] && s.buttons[1])
 	    {
@@ -354,9 +255,6 @@ public:
 		cmd.v_top_right = 0;
 		cmd.div = 3;
 		
-		// srv.request.Vleft = 0.0;
-		// srv.request.Vright = 0.0;
-		// srv.request.Vtop = 0.0;
 	    }
 	    
 	}
@@ -406,31 +304,6 @@ public:
 	    cmd.div = 3;
 
 	    serial_pub.publish(cmd);
-	    // srv.request.robot_index = robot_index;
-	    // srv.request.type = 'm';
-	    // srv.request.Vleft = 0.0;
-	    // srv.request.Vright = 0.0;
-	    // srv.request.Vtop = 0.0;
-	    // srv.request.div = 0;
-
-	    // // send request to service
-	    // if(client[0].call(srv))
-	    // {
-	    // 	if(srv.response.error == false)
-	    // 	    ROS_DEBUG("Send Successful: speed_command\n");
-	    // 	else
-	    // 	{
-	    // 	    ROS_DEBUG("Send Request Denied: speed_command\n");
-	    // 	    static bool request_denied_notify = true;
-	    // 	    if(request_denied_notify)
-	    // 	    {
-	    // 		ROS_INFO("Send Requests Denied: speed_command\n");
-	    // 		request_denied_notify = false;
-	    // 	    }
-	    // 	}
-	    // }
-	    // else 
-	    // 	ROS_ERROR("Failed to call service: speed_command\n");
 	}
 };
 
