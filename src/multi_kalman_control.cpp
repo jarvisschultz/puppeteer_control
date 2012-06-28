@@ -428,7 +428,6 @@ public:
 	    	(cos(actual_th)*(desired_y-actual_y)-
 	    	 sin(actual_th)*(desired_x-actual_x))
 		+ k3*angles::shortest_angular_distance(actual_th, desired_th);
-	    // + k3*angle_correction(desired_th, actual_th);
 
 	    ROS_DEBUG("Intermediate value of control values: v = %f\tw = %f"
 		      ,v,omega);
