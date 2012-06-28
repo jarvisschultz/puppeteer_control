@@ -743,7 +743,8 @@ public:
 	    // Now we can publish the Kinect's estimate of the robot's
 	    // pose
 	    std::stringstream ss;
-	    ss << "base_footprint_kinect_robot_" << index;
+	    // ss << "base_footprint_kinect_robot_" << index;
+	    ss << "robot_" << index << "/base_footprint_kinect";
 	    kin_pose[index].header.stamp = ros::Time::now();
 	    kin_pose[index].header.frame_id = "map";
 	    kin_pose[index].child_frame_id = ss.str();
