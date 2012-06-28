@@ -34,6 +34,7 @@
 #include <nav_msgs/Path.h>
 #include <Eigen/Core>
 #include <Eigen/Dense>
+#include <angles/angles.h>
 
 
 //---------------------------------------------------------------------------
@@ -757,13 +758,13 @@ public:
 	    			     transptlast.point.x,
 	    			     transpt.point.z-
 	    			     transptlast.point.z);
-	    	theta = clamp_angle(theta-M_PI/2.0);
+	    	theta = angles::normalize_angle(theta-M_PI/2.0);
 		ROS_DEBUG("Calculated angle = %f",theta);					  
 	    }
 	    else
 	    {
 	    	theta = robot_start_ori[index];
-	    	theta = clamp_angle(-theta);
+	    	theta = angles::normalize_angle(-theta);
 		ROS_DEBUG("predetermined angle = %f",theta);
 	    }
 	    geometry_msgs::Quaternion quat = tf::createQuaternionMsgFromYaw(theta);

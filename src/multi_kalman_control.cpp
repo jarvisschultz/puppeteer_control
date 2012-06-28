@@ -20,6 +20,7 @@
 #include <nav_msgs/Path.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
+#include <angles/angles.h>
 
 #include "puppeteer_msgs/speed_command.h"
 #include "puppeteer_msgs/RobotPose.h"
@@ -347,7 +348,7 @@ public:
 	    desired_th = atan2(traj->vals[index][2]-desired_y,
 			       traj->vals[index][1]-desired_x);
 	    if (isnan(desired_th) == 0)
-		desired_th = clamp_angle(desired_th);
+		desired_th = angles::normalize_angle(desired_th);
 
 	    // Now, we can interpolate the feedforward terms:
 	    vd = (traj->vals[index-1][3])+
@@ -406,7 +407,7 @@ public:
 	    actual_y = -p.pose.pose.position.y;
 
 	    actual_th = tf::getYaw(p.pose.pose.orientation);
-	    actual_th = clamp_angle(-actual_th);
+	    actual_th = angles::normalize_angle(-actual_th);
 	    
 	    
 	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",
@@ -426,7 +427,8 @@ public:
 	    omega = wd + k2*((float) sgn(vd))*
 	    	(cos(actual_th)*(desired_y-actual_y)-
 	    	 sin(actual_th)*(desired_x-actual_x))
-	    	+ k3*angle_correction(desired_th, actual_th);
+		+ k3*angles::shortest_angular_distance(actual_th, desired_th);
+	    // + k3*angle_correction(desired_th, actual_th);
 
 	    ROS_DEBUG("Intermediate value of control values: v = %f\tw = %f"
 		      ,v,omega);
@@ -556,7 +558,7 @@ public:
 	    
 	    if (isnan(th) == 0)
 	    {
-		th = clamp_angle(th);
+		th = angles::normalize_angle(th);
 		ros::param::set("robot_th0", th);
 	    }
 	    else
@@ -578,12 +580,9 @@ public:
     
     double angle_correction(double desired, double actual)
 	{
-	    ROS_DEBUG("Inputs to angle correction: desired = %f  actual = "
-		      "%f  diff = %f", desired, actual, desired-actual);
 	    double tmp = actual;
 	    while ((desired-tmp) > M_PI) tmp += 2.0*M_PI;
 	    while ((desired-tmp) < -M_PI) tmp -= 2.0*M_PI;
-	    ROS_DEBUG("Output of angle_correction is %f",desired-tmp);
 	    return(desired-tmp);
 	}
 
