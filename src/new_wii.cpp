@@ -89,7 +89,7 @@ public:
 
 	// define a publisher for the serial commands
 	serial_pub = n_.advertise<puppeteer_msgs::RobotCommands>
-	    ("/robot_1/serial_commands", 1);
+	    ("serial_commands", 1);
 	
 	// set default values:
 	cmd.robot_index = robot_index;
