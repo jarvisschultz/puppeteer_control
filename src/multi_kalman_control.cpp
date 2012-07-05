@@ -366,7 +366,7 @@ public:
 	    // now we can convert the desired pose into a
 	    // nav_msgs::Odometry and publish it
 	    ref_pose.header.stamp = p.header.stamp;
-	    ref_pose.header.frame_id = "robot_odom_pov";
+	    ref_pose.header.frame_id = "/robot_odom_pov";
 	    std::stringstream ss;
 	    ss << "robot_" << ch << "_base_footprint_ref";
 	    ref_pose.child_frame_id = ss.str();

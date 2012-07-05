@@ -14,7 +14,7 @@
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <param name="/winch_bool" type="bool" value="$(arg winch)" />
   <param name="/number_robots" type="int" value="3" />
-  <param name="/simulator_noise" type="double" value="0" />
+  <param name="/simulator_noise" type="double" value="0.01" />
 
 
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -37,6 +37,7 @@
     <!-- define args for the namespace -->
     <arg name="index" value="robot_1" />
     <arg name="frame" value="$(arg index)_base_footprint_mine" />
+    <!-- <arg name="frame" value="base_footprint_kinect" /> -->
     <!-- define all parameters -->
     <param name="robot_radius" type="double" value="0.0915" />
     <param name="robot_index" type="int" value="1" />
@@ -59,6 +60,7 @@
     <!-- define args for the namespace -->
     <arg name="index" value="robot_2" />
     <arg name="frame" value="$(arg index)_base_footprint_mine" />
+    <!-- <arg name="frame" value="base_footprint_kinect" /> -->
     <!-- define all parameters -->
     <param name="robot_radius" type="double" value="0.0915" />
     <param name="robot_index" type="int" value="4" />
@@ -82,6 +84,7 @@
     <!-- define args for the namespace -->
     <arg name="index" value="robot_3" />
     <arg name="frame" value="$(arg index)_base_footprint_mine" />
+    <!-- <arg name="frame" value="base_footprint_kinect" /> -->
     <!-- define all parameters -->
     <param name="robot_radius" type="double" value="0.0915" />
     <param name="robot_index" type="int" value="5" />
