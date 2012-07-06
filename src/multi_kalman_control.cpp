@@ -91,7 +91,7 @@ private:
     ros::NodeHandle n_;
     ros::Publisher serial_pub;
     ros::Subscriber sub;
-    ros::Timer timer;
+    ros::Timer timer,pathtimer;
     ros::Time service_time;
     ros::Publisher ref_pub, rpath_pub;
     puppeteer_msgs::RobotCommands command;
@@ -142,7 +142,11 @@ public:
 			       &KinematicControl::timercb, this);
 	// Define a publisher for publishing the robot's reference pose
 	ref_pub = n_.advertise<nav_msgs::Odometry> ("reference_pose", 100);
-	rpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_robot", 100);
+
+	// define a timer and publisher for publishing the path of the robot
+	pathtimer = n_.createTimer(ros::Duration(5),
+				   &KinematicControl::pathpubcb, this);
+	rpath_pub = n_.advertise<nav_msgs::Path> ("desired_path_robot", 1);
 	
 	// Read in the trajectory:
 	traj = ReadControls(filename);
@@ -168,7 +172,6 @@ public:
     void timercb(const ros::TimerEvent& e)
 	{
 	    ROS_DEBUG("Control timer callback triggered");
-	    int operating_condition = 0;
 	    ros::param::get("/operating_condition", operating_condition);
 
 	    if( operating_condition == 0 ||
@@ -230,7 +233,7 @@ public:
 		ROS_INFO_THROTTLE(5, "Calibrating...");
 
 		// publish paths
-		rpath_pub.publish(path_r);
+		// rpath_pub.publish(path_r);
 	    }
 	    else if (operating_condition == 2)
 	    {
@@ -257,7 +260,7 @@ public:
 		    check_winch();
 
 		    // publish paths
-		    rpath_pub.publish(path_r);
+		    // rpath_pub.publish(path_r);
 		}
 		else
 		{
@@ -608,6 +611,13 @@ public:
 		path_r.poses[i].pose.position.y = traj->vals[i][2];
 		path_r.poses[i].pose.position.z = 0;
 	    }
+	    return;
+	}
+
+    void pathpubcb(const ros::TimerEvent& e)
+	{
+	    // publish paths
+	    rpath_pub.publish(path_r);
 	    return;
 	}
 };
