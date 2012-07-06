@@ -47,8 +47,8 @@ def main(fname):
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec
 
-    xref = 0.5*np.cos(tvec/2.+np.pi/2.)
-    yref = 0.5*np.sin(tvec/2.+np.pi/2.)
+    xref = 0.5*np.cos(tvec/2.+3.0*np.pi/2.)
+    yref = 0.5*np.sin(tvec/2.+3.0*np.pi/2.)
     zref = 0.0*tvec
 
     vd, wd = get_curvature(tvec,xref,yref)
