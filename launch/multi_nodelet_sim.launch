@@ -13,7 +13,7 @@
   <!-- SET GLOBAL PARAMETERS --> 
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <param name="/winch_bool" type="bool" value="$(arg winch)" />
-  <param name="/number_robots" type="int" value="3" />
+  <param name="/number_robots" type="int" value="4" />
   <param name="/simulator_noise" type="double" value="0.01" />
 
 
