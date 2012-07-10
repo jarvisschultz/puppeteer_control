@@ -10,7 +10,7 @@ from math import sin, cos, pi
 
 tf = 8.0*pi
 dt = 0.01
-plot_flag = True
+plot_flag = False
 
 
 def main(fname):
@@ -47,8 +47,8 @@ def main(fname):
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec
 
-    xref = 0.5*np.cos(tvec/2.+3.0*np.pi/2.)
-    yref = 0.5*np.sin(tvec/2.+3.0*np.pi/2.)
+    xref = 0.5*np.cos(tvec/2.+7.0*np.pi/4.)
+    yref = 0.5*np.sin(tvec/2.+7.0*np.pi/4.)
     zref = 0.0*tvec
 
     vd, wd = get_curvature(tvec,xref,yref)

@@ -172,7 +172,7 @@ public:
     void timercb(const ros::TimerEvent& e)
 	{
 	    ROS_DEBUG("Control timer callback triggered");
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 
 	    if( operating_condition == 0 ||
 		operating_condition == 3 ||
@@ -203,7 +203,7 @@ public:
 	{
 	    ROS_DEBUG("Control pose subscriber triggered");
 	    static double running_time = 0.0;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 	    
 	    if (operating_condition == 0 || operating_condition == 3)
 	    {

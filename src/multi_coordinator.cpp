@@ -289,7 +289,7 @@ public:
 
 	    // get operating condition
 	    if (ros::param::has("/operating_condition"))
-		ros::param::get("/operating_condition", operating_condition);
+		ros::param::getCached("/operating_condition", operating_condition);
 	    else
 	    {
 		operating_condition = 4;
