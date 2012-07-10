@@ -13,7 +13,7 @@
   <!-- SET GLOBAL PARAMETERS --> 
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <param name="/winch_bool" type="bool" value="$(arg winch)" />
-  <param name="/number_robots" type="int" value="8" />
+  <param name="/number_robots" type="int" value="3" />
   <param name="/simulator_noise" type="double" value="0.01" />
 
 
@@ -56,171 +56,160 @@
   </group>
 
 
-  <!-- robot number 2 -->
-  <group ns="robot_2" >
-    <!-- define args for the namespace -->
-    <arg name="index" value="robot_2" />
-    <arg name="frame" value="$(arg index)_base_footprint_mine" />
-    <!-- define all parameters -->
-    <param name="robot_radius" type="double" value="0.0915" />
-    <param name="robot_index" type="int" value="4" />
-    <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!-- launch the control nodes and the simulator     -->
-    <node pkg="puppeteer_control" type="multi_kalman_controller"
-  	  name="$(arg index)_kinematic_controller" output="screen" respawn="true"
-  	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <node pkg="filtering_node" type="multi_ekf_filter"
-  	  name="$(arg index)_ekf" output="screen" respawn="true" />
-    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
-      <arg name="rn" value="$(arg index)" />
-      <arg name="frame" value="$(arg frame)" />
-    </include>
-  </group>
+  <!-- <!-\- robot number 2 -\-> -->
+  <!-- <group ns="robot_2" > -->
+  <!--   <!-\- define args for the namespace -\-> -->
+  <!--   <arg name="index" value="robot_2" /> -->
+  <!--   <arg name="frame" value="$(arg index)_base_footprint_mine" /> -->
+  <!--   <!-\- define all parameters -\-> -->
+  <!--   <param name="robot_radius" type="double" value="0.0915" /> -->
+  <!--   <param name="robot_index" type="int" value="4" /> -->
+  <!--   <param name="winch_bool" type="bool" value="$(arg winch)" /> -->
+  <!--   <!-\- launch the control nodes and the simulator     -\-> -->
+  <!--   <node pkg="puppeteer_control" type="multi_kalman_controller" -->
+  <!-- 	  name="$(arg index)_kinematic_controller" output="screen" respawn="true" -->
+  <!-- 	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/> -->
+  <!--   <node pkg="filtering_node" type="multi_ekf_filter" -->
+  <!-- 	  name="$(arg index)_ekf" output="screen" respawn="true" /> -->
+  <!--   <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" > -->
+  <!--     <arg name="rn" value="$(arg index)" /> -->
+  <!--     <arg name="frame" value="$(arg frame)" /> -->
+  <!--   </include> -->
+  <!-- </group> -->
 
 
 
-  <!-- robot number 3 -->
-  <group ns="robot_3" >
-    <!-- define args for the namespace -->
-    <arg name="index" value="robot_3" />
-    <arg name="frame" value="$(arg index)_base_footprint_mine" />
-    <!-- define all parameters -->
-    <param name="robot_radius" type="double" value="0.0915" />
-    <param name="robot_index" type="int" value="5" />
-    <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!-- launch the control nodes and the simulator     -->
-    <node pkg="puppeteer_control" type="multi_kalman_controller"
-  	  name="$(arg index)_kinematic_controller" output="screen" respawn="true"
-  	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <node pkg="filtering_node" type="multi_ekf_filter"
-  	  name="$(arg index)_ekf" output="screen" respawn="true" />
-    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
-      <arg name="rn" value="$(arg index)" />
-      <arg name="frame" value="$(arg frame)" />
-    </include>
-  </group>
+  <!-- <!-\- robot number 3 -\-> -->
+  <!-- <group ns="robot_3" > -->
+  <!--   <!-\- define args for the namespace -\-> -->
+  <!--   <arg name="index" value="robot_3" /> -->
+  <!--   <arg name="frame" value="$(arg index)_base_footprint_mine" /> -->
+  <!--   <!-\- define all parameters -\-> -->
+  <!--   <param name="robot_radius" type="double" value="0.0915" /> -->
+  <!--   <param name="robot_index" type="int" value="5" /> -->
+  <!--   <param name="winch_bool" type="bool" value="$(arg winch)" /> -->
+  <!--   <!-\- launch the control nodes and the simulator     -\-> -->
+  <!--   <node pkg="puppeteer_control" type="multi_kalman_controller" -->
+  <!-- 	  name="$(arg index)_kinematic_controller" output="screen" respawn="true" -->
+  <!-- 	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/> -->
+  <!--   <node pkg="filtering_node" type="multi_ekf_filter" -->
+  <!-- 	  name="$(arg index)_ekf" output="screen" respawn="true" /> -->
+  <!--   <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" > -->
+  <!--     <arg name="rn" value="$(arg index)" /> -->
+  <!--     <arg name="frame" value="$(arg frame)" /> -->
+  <!--   </include> -->
+  <!-- </group> -->
 
 
-  <!-- robot number 4 -->
-  <group ns="robot_4" >
-    <!-- define args for the namespace -->
-    <arg name="index" value="robot_4" />
-    <arg name="frame" value="$(arg index)_base_footprint_mine" />
-    <!-- define all parameters -->
-    <param name="robot_radius" type="double" value="0.0915" />
-    <param name="robot_index" type="int" value="6" />
-    <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!-- launch the control nodes and the simulator     -->
-    <node pkg="puppeteer_control" type="multi_kalman_controller"
-  	  name="$(arg index)_kinematic_controller" output="screen" respawn="true"
-  	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <node pkg="filtering_node" type="multi_ekf_filter"
-  	  name="$(arg index)_ekf" output="screen" respawn="true" />
-    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
-      <arg name="rn" value="$(arg index)" />
-      <arg name="frame" value="$(arg frame)" />
-    </include>
-  </group>
+  <!-- <!-\- robot number 4 -\-> -->
+  <!-- <group ns="robot_4" > -->
+  <!--   <!-\- define args for the namespace -\-> -->
+  <!--   <arg name="index" value="robot_4" /> -->
+  <!--   <arg name="frame" value="$(arg index)_base_footprint_mine" /> -->
+  <!--   <!-\- define all parameters -\-> -->
+  <!--   <param name="robot_radius" type="double" value="0.0915" /> -->
+  <!--   <param name="robot_index" type="int" value="6" /> -->
+  <!--   <param name="winch_bool" type="bool" value="$(arg winch)" /> -->
+  <!--   <!-\- launch the control nodes and the simulator     -\-> -->
+  <!--   <node pkg="puppeteer_control" type="multi_kalman_controller" -->
+  <!-- 	  name="$(arg index)_kinematic_controller" output="screen" respawn="true" -->
+  <!-- 	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/> -->
+  <!--   <node pkg="filtering_node" type="multi_ekf_filter" -->
+  <!-- 	  name="$(arg index)_ekf" output="screen" respawn="true" /> -->
+  <!--   <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" > -->
+  <!--     <arg name="rn" value="$(arg index)" /> -->
+  <!--     <arg name="frame" value="$(arg frame)" /> -->
+  <!--   </include> -->
+  <!-- </group> -->
 
 
+  <!-- <!-\- robot number 5 -\-> -->
+  <!-- <group ns="robot_5" > -->
+  <!--   <!-\- define args for the namespace -\-> -->
+  <!--   <arg name="index" value="robot_5" /> -->
+  <!--   <arg name="frame" value="$(arg index)_base_footprint_mine" /> -->
+  <!--   <!-\- define all parameters -\-> -->
+  <!--   <param name="robot_radius" type="double" value="0.0915" /> -->
+  <!--   <param name="robot_index" type="int" value="7" /> -->
+  <!--   <param name="winch_bool" type="bool" value="$(arg winch)" /> -->
+  <!--   <!-\- launch the control nodes and the simulator     -\-> -->
+  <!--   <node pkg="puppeteer_control" type="multi_kalman_controller" -->
+  <!-- 	  name="$(arg index)_kinematic_controller" output="screen" respawn="true" -->
+  <!-- 	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/> -->
+  <!--   <node pkg="filtering_node" type="multi_ekf_filter" -->
+  <!-- 	  name="$(arg index)_ekf" output="screen" respawn="true" /> -->
+  <!--   <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" > -->
+  <!--     <arg name="rn" value="$(arg index)" /> -->
+  <!--     <arg name="frame" value="$(arg frame)" /> -->
+  <!--   </include> -->
+  <!-- </group> -->
 
 
-
-
-
-
-  <!-- robot number 5 -->
-  <group ns="robot_5" >
-    <!-- define args for the namespace -->
-    <arg name="index" value="robot_5" />
-    <arg name="frame" value="$(arg index)_base_footprint_mine" />
-    <!-- define all parameters -->
-    <param name="robot_radius" type="double" value="0.0915" />
-    <param name="robot_index" type="int" value="7" />
-    <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!-- launch the control nodes and the simulator     -->
-    <node pkg="puppeteer_control" type="multi_kalman_controller"
-  	  name="$(arg index)_kinematic_controller" output="screen" respawn="true"
-  	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <node pkg="filtering_node" type="multi_ekf_filter"
-  	  name="$(arg index)_ekf" output="screen" respawn="true" />
-    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
-      <arg name="rn" value="$(arg index)" />
-      <arg name="frame" value="$(arg frame)" />
-    </include>
-  </group>
-
-
-  <!-- robot number 6 -->
-  <group ns="robot_6" >
-    <!-- define args for the namespace -->
-    <arg name="index" value="robot_6" />
-    <arg name="frame" value="$(arg index)_base_footprint_mine" />
-    <!-- define all parameters -->
-    <param name="robot_radius" type="double" value="0.0915" />
-    <param name="robot_index" type="int" value="8" />
-    <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!-- launch the control nodes and the simulator     -->
-    <node pkg="puppeteer_control" type="multi_kalman_controller"
-  	  name="$(arg index)_kinematic_controller" output="screen" respawn="true"
-  	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <node pkg="filtering_node" type="multi_ekf_filter"
-  	  name="$(arg index)_ekf" output="screen" respawn="true" />
-    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
-      <arg name="rn" value="$(arg index)" />
-      <arg name="frame" value="$(arg frame)" />
-    </include>
-  </group>
+  <!-- <!-\- robot number 6 -\-> -->
+  <!-- <group ns="robot_6" > -->
+  <!--   <!-\- define args for the namespace -\-> -->
+  <!--   <arg name="index" value="robot_6" /> -->
+  <!--   <arg name="frame" value="$(arg index)_base_footprint_mine" /> -->
+  <!--   <!-\- define all parameters -\-> -->
+  <!--   <param name="robot_radius" type="double" value="0.0915" /> -->
+  <!--   <param name="robot_index" type="int" value="8" /> -->
+  <!--   <param name="winch_bool" type="bool" value="$(arg winch)" /> -->
+  <!--   <!-\- launch the control nodes and the simulator     -\-> -->
+  <!--   <node pkg="puppeteer_control" type="multi_kalman_controller" -->
+  <!-- 	  name="$(arg index)_kinematic_controller" output="screen" respawn="true" -->
+  <!-- 	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/> -->
+  <!--   <node pkg="filtering_node" type="multi_ekf_filter" -->
+  <!-- 	  name="$(arg index)_ekf" output="screen" respawn="true" /> -->
+  <!--   <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" > -->
+  <!--     <arg name="rn" value="$(arg index)" /> -->
+  <!--     <arg name="frame" value="$(arg frame)" /> -->
+  <!--   </include> -->
+  <!-- </group> -->
 
 
 
-  <!-- robot number 7 -->
-  <group ns="robot_7" >
-    <!-- define args for the namespace -->
-    <arg name="index" value="robot_7" />
-    <arg name="frame" value="$(arg index)_base_footprint_mine" />
-    <!-- define all parameters -->
-    <param name="robot_radius" type="double" value="0.0915" />
-    <param name="robot_index" type="int" value="2" />
-    <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!-- launch the control nodes and the simulator     -->
-    <node pkg="puppeteer_control" type="multi_kalman_controller"
-  	  name="$(arg index)_kinematic_controller" output="screen" respawn="true"
-  	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <node pkg="filtering_node" type="multi_ekf_filter"
-  	  name="$(arg index)_ekf" output="screen" respawn="true" />
-    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
-      <arg name="rn" value="$(arg index)" />
-      <arg name="frame" value="$(arg frame)" />
-    </include>
-  </group>
+  <!-- <!-\- robot number 7 -\-> -->
+  <!-- <group ns="robot_7" > -->
+  <!--   <!-\- define args for the namespace -\-> -->
+  <!--   <arg name="index" value="robot_7" /> -->
+  <!--   <arg name="frame" value="$(arg index)_base_footprint_mine" /> -->
+  <!--   <!-\- define all parameters -\-> -->
+  <!--   <param name="robot_radius" type="double" value="0.0915" /> -->
+  <!--   <param name="robot_index" type="int" value="2" /> -->
+  <!--   <param name="winch_bool" type="bool" value="$(arg winch)" /> -->
+  <!--   <!-\- launch the control nodes and the simulator     -\-> -->
+  <!--   <node pkg="puppeteer_control" type="multi_kalman_controller" -->
+  <!-- 	  name="$(arg index)_kinematic_controller" output="screen" respawn="true" -->
+  <!-- 	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/> -->
+  <!--   <node pkg="filtering_node" type="multi_ekf_filter" -->
+  <!-- 	  name="$(arg index)_ekf" output="screen" respawn="true" /> -->
+  <!--   <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" > -->
+  <!--     <arg name="rn" value="$(arg index)" /> -->
+  <!--     <arg name="frame" value="$(arg frame)" /> -->
+  <!--   </include> -->
+  <!-- </group> -->
 
 
-  <!-- robot number 8 -->
-  <group ns="robot_8" >
-    <!-- define args for the namespace -->
-    <arg name="index" value="robot_8" />
-    <arg name="frame" value="$(arg index)_base_footprint_mine" />
-    <!-- define all parameters -->
-    <param name="robot_radius" type="double" value="0.0915" />
-    <param name="robot_index" type="int" value="3" />
-    <param name="winch_bool" type="bool" value="$(arg winch)" />
-    <!-- launch the control nodes and the simulator     -->
-    <node pkg="puppeteer_control" type="multi_kalman_controller"
-  	  name="$(arg index)_kinematic_controller" output="screen" respawn="true"
-  	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/>
-    <node pkg="filtering_node" type="multi_ekf_filter"
-  	  name="$(arg index)_ekf" output="screen" respawn="true" />
-    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
-      <arg name="rn" value="$(arg index)" />
-      <arg name="frame" value="$(arg frame)" />
-    </include>
-  </group>
-
-
-
-
-
+  <!-- <!-\- robot number 8 -\-> -->
+  <!-- <group ns="robot_8" > -->
+  <!--   <!-\- define args for the namespace -\-> -->
+  <!--   <arg name="index" value="robot_8" /> -->
+  <!--   <arg name="frame" value="$(arg index)_base_footprint_mine" /> -->
+  <!--   <!-\- define all parameters -\-> -->
+  <!--   <param name="robot_radius" type="double" value="0.0915" /> -->
+  <!--   <param name="robot_index" type="int" value="3" /> -->
+  <!--   <param name="winch_bool" type="bool" value="$(arg winch)" /> -->
+  <!--   <!-\- launch the control nodes and the simulator     -\-> -->
+  <!--   <node pkg="puppeteer_control" type="multi_kalman_controller" -->
+  <!-- 	  name="$(arg index)_kinematic_controller" output="screen" respawn="true" -->
+  <!-- 	  cwd="node" args="-f $(arg file)_$(arg index).txt -p $(arg dir)"/> -->
+  <!--   <node pkg="filtering_node" type="multi_ekf_filter" -->
+  <!-- 	  name="$(arg index)_ekf" output="screen" respawn="true" /> -->
+  <!--   <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" > -->
+  <!--     <arg name="rn" value="$(arg index)" /> -->
+  <!--     <arg name="frame" value="$(arg frame)" /> -->
+  <!--   </include> -->
+  <!-- </group> -->
 
 
   <!--launch the keyboard node-->
