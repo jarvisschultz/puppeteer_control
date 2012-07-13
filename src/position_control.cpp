@@ -118,7 +118,7 @@ public:
 	    static bool long_flag = false;
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 
 	    ROS_DEBUG("Pose callback triggered");
 	    

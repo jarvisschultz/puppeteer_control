@@ -112,7 +112,7 @@ public:
     void handle_event(struct wiimote_t* wm)
 	{
 	    static int operating_condition = 4;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 	    if (operating_condition != 2) return;	    
 	    
 	    ROS_INFO("\n--- EVENT [id %i] ---\n", wm->unid);
@@ -342,7 +342,7 @@ public:
     void sending_callback(const ros::TimerEvent& e)
 	{
 	    static int operating_condition;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 	    if (operating_condition != 2) return;	    
 	    
 	    // Call service to send data to the robot:

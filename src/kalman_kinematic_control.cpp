@@ -166,7 +166,7 @@ public:
 	{
 	    ROS_DEBUG("Timer callback triggered");
 	    int operating_condition = 0;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 
 	    if(operating_condition == 3 || operating_condition == 4)
 	    {
@@ -183,7 +183,7 @@ public:
 	    ROS_DEBUG("Subscriber callback triggered");
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 	    
 	    if (operating_condition == 0 || operating_condition == 3)
 	    {
@@ -275,7 +275,7 @@ public:
 	    }
 	    else if (operating_condition == 4)
 	    {
-		ROS_WARN("Emergency Stop Detected!");
+		ROS_WARN_THROTTLE(1, "Emergency Stop Detected!");
 		srv.request.robot_index = traj->RobotMY;
 		srv.request.type = 'h';
 		srv.request.Vleft = 0.0;
@@ -595,7 +595,7 @@ public:
 	    if(!ros::param::has("winch_bool"))
 		ros::param::set("winch_bool",false);
 	    ROS_DEBUG("Checking winch bool");
-	    ros::param::get("winch_bool", winch);
+	    ros::param::getCached("winch_bool", winch);
 	    ROS_DEBUG("/winch_bool = %d", winch);	    
 
 	}

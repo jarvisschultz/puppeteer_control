@@ -111,8 +111,8 @@ public:
 	{
 	    ROS_DEBUG("Timer callback triggered");
 	    int operating_condition = 0;
-	    ros::param::get("/operating_condition", operating_condition);
-	    ros::param::get("robot_index", robot_index);
+	    ros::param::getCached("/operating_condition", operating_condition);
+	    ros::param::getCached("robot_index", robot_index);
 	    cmd.robot_index = robot_index;
 	    
 	    if (kbhit()) keyboard_interpreter();

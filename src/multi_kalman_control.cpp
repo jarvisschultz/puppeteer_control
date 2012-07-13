@@ -296,7 +296,7 @@ public:
 	    }
 	    else if (operating_condition == 4)
 	    {
-		ROS_WARN("Emergency Stop Detected!");
+		ROS_WARN_THROTTLE(1, "Emergency Stop Detected!");
 		command.robot_index = traj->RobotMY;
 		command.header.stamp = ros::Time::now();
 		command.type = 'h';
@@ -595,7 +595,7 @@ public:
 	    if(!ros::param::has("winch_bool"))
 		ros::param::set("winch_bool",false);
 	    ROS_DEBUG("Checking winch bool");
-	    ros::param::get("winch_bool", winch);
+	    ros::param::getCached("winch_bool", winch);
 	    ROS_DEBUG("winch_bool = %d", winch);	    
 	    return;
 	}

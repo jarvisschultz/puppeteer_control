@@ -121,7 +121,7 @@ public:
 	{
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 	    
 	    if (operating_condition == 0 || operating_condition == 1 ||
 		operating_condition == 3)
@@ -178,7 +178,7 @@ public:
 	    }
 	    else if (operating_condition == 4)
 	    {
-		ROS_WARN("Emergency Stop Detected!");
+		ROS_WARN_THROTTLE(1, "Emergency Stop Detected!");
 		srv.request.robot_index = traj->RobotMY;
 		srv.request.type = 'h';
 		srv.request.Vleft = 0.0;
@@ -394,7 +394,7 @@ public:
 	    file.close();
 	    
 	    // Now we can set DT and the robot_index
-	    ros::param::get("/robot_index", traj->RobotMY);
+	    ros::param::getCached("/robot_index", traj->RobotMY);
 	    traj->DT = traj->vals[1][0]-traj->vals[0][0];
 	    traj->num = num;
 

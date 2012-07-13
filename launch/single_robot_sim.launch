@@ -1,0 +1,27 @@
+<launch>
+  <arg name="index"/>
+  <arg name="ns" />
+  <arg name="file" />
+  <arg name="dir" />
+  <arg name="winch" default="false" />
+
+  <group ns="$(arg ns)" >
+    <!-- define args for the namespace -->
+    <arg name="frame" value="$(arg ns)_base_footprint_mine" />
+    <!-- define all parameters -->
+    <param name="robot_radius" type="double" value="0.0915" />
+    <param name="robot_index" type="int" value="$(arg index)" />
+    <param name="winch_bool" type="bool" value="$(arg winch)" />
+    <!-- launch the control nodes and the simulator     -->
+    <node pkg="puppeteer_control" type="multi_kalman_controller"
+  	  name="$(arg ns)_kinematic_controller" output="screen" respawn="true"
+  	  cwd="node" args="-f $(arg file)_$(arg ns).txt -p $(arg dir)"/>
+    <node pkg="filtering_node" type="multi_ekf_filter"
+  	  name="$(arg ns)_ekf" output="screen" respawn="true" />
+    <include file="$(find robot_simulator)/launch/single_robot_simulator.launch" >
+      <arg name="rn" value="$(arg ns)" />
+      <arg name="frame" value="$(arg frame)" />
+    </include>
+  </group>
+
+</launch>

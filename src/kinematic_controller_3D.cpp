@@ -122,7 +122,7 @@ public:
 	    ROS_DEBUG("Subscriber callback triggered");
 	    static double running_time = 0.0;
 	    static ros::Time base_time;
-	    ros::param::get("/operating_condition", operating_condition);
+	    ros::param::getCached("/operating_condition", operating_condition);
 	    
 	    if (operating_condition == 0 || operating_condition == 1 ||
 		operating_condition == 3)
@@ -182,7 +182,7 @@ public:
 	    }
 	    else if (operating_condition == 4)
 	    {
-		ROS_WARN("Emergency Stop Detected!");
+		ROS_WARN_THROTTLE(1, "Emergency Stop Detected!");
 		srv.request.robot_index = traj->RobotMY;
 		srv.request.type = 'h';
 		srv.request.Vleft = 0.0;
