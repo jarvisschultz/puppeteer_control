@@ -128,7 +128,7 @@ public:
 		    
 
 	    // If running, send command
-	    if (operating_condition == 2 && wii_control)
+	    if (wii_control)
 	    {
 		serial_pub.publish(cmd);
 	    }
@@ -224,6 +224,7 @@ public:
 	    {
 		ROS_DEBUG("IDLING");
 		ros::param::set("operating_condition", 0);
+		wii_control = false;
 		cmd.robot_index = robot_index;
 		cmd.type = (uint8_t) 'h';
 		cmd.v_left = 0;
@@ -232,18 +233,35 @@ public:
 		cmd.v_top_left = 0;
 		cmd.v_top_right = 0;
 		cmd.div = 3;
-
+		serial_pub.publish(cmd);
 	    }
 	    else if (s.buttons[0] && s.buttons[1])
 	    {
 		ROS_DEBUG("RESUMING");
 		ros::param::set("operating_condition", 2);
+		wii_control = true;
 	    }
 	    else if (s.nunchuk_buttons[0] && s.nunchuk_buttons[1])
 	    {
 		ROS_DEBUG("sending start string");
 		send_start_flag();
 	    }
+	    // are we pushing up?
+	    else if (s.buttons[6])
+	    {
+		ROS_DEBUG("resetting robot's pose");
+		ros::param::set("operating_condition", 0);
+		wii_control = false;
+		cmd.robot_index = robot_index;
+		cmd.type = (uint8_t) 'r';
+		cmd.v_left = 0;
+		cmd.v_right = 0;
+		cmd.v_top = 0;
+		cmd.v_top_left = 0;
+		cmd.v_top_right = 0;
+		cmd.div = 3;
+		serial_pub.publish(cmd);
+	    }		     
 	    else
 	    {
 		cmd.robot_index = robot_index;
@@ -254,7 +272,6 @@ public:
 		cmd.v_top_left = 0;
 		cmd.v_top_right = 0;
 		cmd.div = 3;
-		
 	    }
 	    
 	}
@@ -283,6 +300,13 @@ public:
 		else
 		    ROS_INFO("Enabling wii control!");
 		wii_control = !wii_control;		
+	    }
+	    else if (c == 'R')
+	    {
+		ROS_INFO("Resetting Robot!");
+		// let's send the command to the robot to reset it's state
+		cmd.type = (uint8_t) 'r';
+		ros::param::set("/operating_condition", 0);
 	    }
 	    else
 		ROS_WARN("Unrecognized character");
