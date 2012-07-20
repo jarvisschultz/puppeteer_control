@@ -325,7 +325,7 @@ public:
 	    cmd.v_top = 0;
 	    cmd.v_top_left = 0;
 	    cmd.v_top_right = 0;
-	    cmd.div = 3;
+	    cmd.div = 0;
 
 	    serial_pub.publish(cmd);
 	}

@@ -3,7 +3,8 @@
   <param name="/operating_condition" type="int" value="0" />
 
   <!--launch the serial node-->
-  <node pkg="serial_node" type="serial_node" name="serial_node"
+  <rosparam file="$(find serial_node)/data/serial_device_dict.xml" command="load"/>
+  <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
 	output="screen" respawn="true" 
 	launch-prefix="xterm -rv -e" />
 
