@@ -231,9 +231,6 @@ public:
 		    cal_start_flag = false;
 		}
 		ROS_INFO_THROTTLE(5, "Calibrating...");
-
-		// publish paths
-		// rpath_pub.publish(path_r);
 	    }
 	    else if (operating_condition == 2)
 	    {
@@ -258,9 +255,6 @@ public:
 
 		    // check if we are running the winch:
 		    check_winch();
-
-		    // publish paths
-		    // rpath_pub.publish(path_r);
 		}
 		else
 		{
