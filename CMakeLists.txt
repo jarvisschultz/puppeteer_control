@@ -46,5 +46,9 @@ rosbuild_add_executable(multi_kalman_controller src/multi_kalman_control.cpp)
 
 rosbuild_add_executable(multi_coordinator src/multi_coordinator.cpp)
 rosbuild_add_compile_flags(multi_coordinator "-g -Wall")
+# add logging functionality
+find_library(LOG4CXX_LIBRARY log4cxx)
+target_link_libraries(multi_coordinator ${LOG4CXX_LIBRARY})
 
 rosbuild_add_executable(new_wiimote src/new_wii.cpp)
+

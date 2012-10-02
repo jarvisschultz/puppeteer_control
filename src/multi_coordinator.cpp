@@ -68,7 +68,7 @@ private:
     ros::NodeHandle n_;
     ros::Subscriber robots_sub;
     ros::Publisher robots_pub[MAX_ROBOTS];
-    ros::Timer timer;
+    // ros::Timer timer;
     int nr;
     bool calibrated_flag, gen_flag;
     unsigned int calibrate_count;
@@ -93,8 +93,8 @@ public:
     Coordinator() {
 	ROS_DEBUG("Creating publishers and subscribers");
 	// timer = n_.
-	//     createTimer(ros::Duration(0.033), &Coordinator::timercb, this);
-	robots_sub = n_.subscribe("robot_positions", 100,
+	//     createTimer(ros::Duration(0.01), &Coordinator::timercb, this);
+	robots_sub = n_.subscribe("robot_positions", 1,
 				  &Coordinator::datacb, this);
 	// get the number of robots
 	if (ros::param::has("/number_robots"))
@@ -167,6 +167,16 @@ public:
 	// allocate memory for bad_array
 	bad_array = new bool[nr];
 
+	
+	// do we need to generate the robot order?
+	if (gen_flag)
+	{
+	    // Generate the robot ordering vector
+	    gen_flag = generate_order();
+	    return;
+	}
+
+
 	return;
     }
 
@@ -197,17 +207,27 @@ public:
     
     void datacb(const puppeteer_msgs::Robots &bots)
 	{
-	    // static ros::Time freqtime;
-	    // ROS_DEBUG("datacb time = %f seconds (%f Hz)",
-	    // 	     (ros::Time::now()-freqtime).toSec(), 1/(ros::Time::now()-freqtime).toSec());
-	    // freqtime = ros::Time::now();
+	    static bool first_flag = true;
+	    static ros::Time time = ros::Time::now();
+
+	    // do we need to generate the robot order?
+	    if (gen_flag)
+	    {
+		// Generate the robot ordering vector
+		gen_flag = generate_order();
+		return;
+	    }
 	    
+	    // get operating condition
+	    if (ros::param::has("/operating_condition"))
+		ros::param::getCached("/operating_condition", operating_condition);
+	    else
+	    {
+		operating_condition = 4;
+		ros::param::set("/operating_condition", operating_condition);
+	    }
 	    ROS_DEBUG("coordinator datacb triggered with OC = %d",
 		     operating_condition);
-	    static bool first_flag = true;
-	    static ros::Time time;
-
-	    timercb();
 
 	    // if we aren't calibrating or running, let's just exit
 	    // this cb
@@ -216,7 +236,7 @@ public:
 	    puppeteer_msgs::Robots b;
 	    b.robots.resize(bots.robots.size());
 	    b = bots;
-	    tstamp = ros::Time::now();
+	    tstamp = bots.header.stamp;
 	    
 	    // correct the points in bots
 	    b = adjust_for_robot_size(b);
@@ -266,6 +286,9 @@ public:
 	    // print_bots("tmp_bots (before)",tmp);
 	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
 	    prev_bots_sorted = tmp;
+
+	    // now we can publish all relevant data and handle calibration logic:
+	    calibration_and_publishing_logic();	    
 	    
 	    return;
 	}
@@ -273,55 +296,25 @@ public:
     
 
     // void timercb(const ros::TimerEvent& e)
-    void timercb(void) 
+    // void timercb(void)
+    void calibration_and_publishing_logic(void)
 	{
-	    static int num_delays = 0;
-	    static ros::Time t1;
-	    t1 = ros::Time::now();
-
-	    ROS_DEBUG("coordinator timercb triggered");
-	    if (gen_flag)
-	    {
-		// Generate the robot ordering vector
-		gen_flag = generate_order();
-		return;
-	    }
-
-	    // get operating condition
-	    if (ros::param::has("/operating_condition"))
-		ros::param::getCached("/operating_condition", operating_condition);
-	    else
-	    {
-		operating_condition = 4;
-		ros::param::set("/operating_condition", operating_condition);
-	    }
 	    
-	    // check to see if we are in run state
-	    if(operating_condition == 1 || operating_condition == 2)
+	    static int num_delays = 0;
+	    if(calibrated_flag)
 	    {
-		if(calibrated_flag)
+		if (num_delays < NUM_FRAME_DELAYS)
 		{
-		    if (num_delays < NUM_FRAME_DELAYS)
-		    {
-			num_delays++;
-			return;
-		    }
-		    else if (num_delays < NUM_EKF_INITS+NUM_FRAME_DELAYS)
-			process_robots(1);
-		    else
-		    {
-			process_robots(operating_condition);
-			// static ros::Time freqtime;
-			// ROS_INFO("done with publish = %f seconds (%f Hz)",
-			// 	 (ros::Time::now()-freqtime).toSec(), 1/(ros::Time::now()-freqtime).toSec());
-			// freqtime = ros::Time::now();
-			ROS_DEBUG("Done processing and sending robot info : %f sec (%f Hz)",
-				 (ros::Time::now()-t1).toSec(),
-				 1/(ros::Time::now()-t1).toSec());
-			t1 = ros::Time::now();
-		    }
 		    num_delays++;
+		    return;
 		}
+		else if (num_delays < NUM_EKF_INITS+NUM_FRAME_DELAYS)
+		    process_robots(1);
+		else
+		{
+		    process_robots(operating_condition);
+		}
+		num_delays++;
 		return;
 	    }
 	    
@@ -694,8 +687,7 @@ public:
 	    Eigen::Vector3d tmp_point; 
 	    tf::Transform transform;
 	    geometry_msgs::PointStamped transpt, transptlast;
-	    ros::Time tstamp = pt.header.stamp;
-	    
+	    ros::Time time_pt = ptlast.header.stamp;
 
 	    // set transform parameters
 	    transform.setOrigin(tf::Vector3(cal_pos(0),
@@ -709,7 +701,7 @@ public:
 	    tmp_point << pt.point.x, pt.point.y, pt.point.z;
 	    tmp_point = gwo*tmp_point;
 	    transpt.header.frame_id = "optimization_frame";
-	    transpt.header.stamp = tstamp;
+	    transpt.header.stamp = time_pt;
 	    transpt.point.x = tmp_point(0);
 	    transpt.point.y = tmp_point(1);
 	    transpt.point.z = tmp_point(2);
@@ -717,7 +709,7 @@ public:
 	    tmp_point << ptlast.point.x, ptlast.point.y, ptlast.point.z;
 	    tmp_point = gwo*tmp_point;
 	    transptlast.header.frame_id = "optimization_frame";
-	    transptlast.header.stamp = tstamp;
+	    transptlast.header.stamp = time_pt;
 	    transptlast.point.x = tmp_point(0);
 	    transptlast.point.y = tmp_point(1);
 	    transptlast.point.z = tmp_point(2);
@@ -730,7 +722,7 @@ public:
 	    try{
 	    	tf.lookupTransform(
 	    	    "map", "optimization_frame",
-	    	    tstamp, trans_stamped);
+	    	    time_pt, trans_stamped);
 	    	tf.transformPoint("map", transpt, tmp);
 
 	    }
@@ -746,7 +738,7 @@ public:
 	    std::stringstream ss;
 	    // ss << "base_footprint_kinect_robot_" << index;
 	    ss << "robot_" << index << "/base_footprint_kinect";
-	    kin_pose[index].header.stamp = ros::Time::now();
+	    kin_pose[index].header.stamp = time_pt;
 	    kin_pose[index].header.frame_id = "map";
 	    kin_pose[index].child_frame_id = ss.str();
 	    tmp.point.z = 0.0;
@@ -796,7 +788,7 @@ public:
 	    q1 = q1*q2;
 	    tf::quaternionTFToMsg(q1, quat);
 
-	    kin_trans.header.stamp = tstamp;
+	    kin_trans.header.stamp = time_pt;
 	    kin_trans.header.frame_id = kin_pose[index].header.frame_id;
 	    kin_trans.child_frame_id = kin_pose[index].child_frame_id;
 	    kin_trans.transform.translation.x = kin_pose[index].pose.pose.position.x;
@@ -938,9 +930,9 @@ int main(int argc, char **argv)
 
     // // turn on debugging
     // log4cxx::LoggerPtr my_logger =
-    // log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
+    // 	log4cxx::Logger::getLogger(ROSCONSOLE_DEFAULT_NAME);
     // my_logger->setLevel(
-    // ros::console::g_level_lookup[ros::console::levels::Debug]);
+    // 	ros::console::g_level_lookup[ros::console::levels::Debug]);
 
     ros::NodeHandle n;
 

@@ -13,7 +13,7 @@
   <!-- SET GLOBAL PARAMETERS --> 
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <param name="/winch_bool" type="bool" value="$(arg winch)" />
-  <param name="/number_robots" type="int" value="8" />
+  <param name="/number_robots" type="int" value="3" />
   <param name="/simulator_noise" type="double" value="0.01" />
 
 
@@ -57,45 +57,45 @@
     <arg name="dir" value="$(arg dir)" />
   </include>
 
-  <!-- robot 4 -->
-  <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" >
-    <arg name="ns" value="robot_4" />
-    <arg name="index" value="6" />
-    <arg name="file" value="$(arg file)" />
-    <arg name="dir" value="$(arg dir)" />
-  </include>
+  <!-- <!-\- robot 4 -\-> -->
+  <!-- <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" > -->
+  <!--   <arg name="ns" value="robot_4" /> -->
+  <!--   <arg name="index" value="6" /> -->
+  <!--   <arg name="file" value="$(arg file)" /> -->
+  <!--   <arg name="dir" value="$(arg dir)" /> -->
+  <!-- </include> -->
 
-  <!-- robot 5 -->
-  <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" >
-    <arg name="ns" value="robot_5" />
-    <arg name="index" value="7" />
-    <arg name="file" value="$(arg file)" />
-    <arg name="dir" value="$(arg dir)" />
-  </include>
+  <!-- <!-\- robot 5 -\-> -->
+  <!-- <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" > -->
+  <!--   <arg name="ns" value="robot_5" /> -->
+  <!--   <arg name="index" value="7" /> -->
+  <!--   <arg name="file" value="$(arg file)" /> -->
+  <!--   <arg name="dir" value="$(arg dir)" /> -->
+  <!-- </include> -->
 
-  <!-- robot 6 -->
-  <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" >
-    <arg name="ns" value="robot_6" />
-    <arg name="index" value="8" />
-    <arg name="file" value="$(arg file)" />
-    <arg name="dir" value="$(arg dir)" />
-  </include>
+  <!-- <!-\- robot 6 -\-> -->
+  <!-- <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" > -->
+  <!--   <arg name="ns" value="robot_6" /> -->
+  <!--   <arg name="index" value="8" /> -->
+  <!--   <arg name="file" value="$(arg file)" /> -->
+  <!--   <arg name="dir" value="$(arg dir)" /> -->
+  <!-- </include> -->
 
-  <!-- robot 7 -->
-  <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" >
-    <arg name="ns" value="robot_7" />
-    <arg name="index" value="2" />
-    <arg name="file" value="$(arg file)" />
-    <arg name="dir" value="$(arg dir)" />
-  </include>
+  <!-- <!-\- robot 7 -\-> -->
+  <!-- <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" > -->
+  <!--   <arg name="ns" value="robot_7" /> -->
+  <!--   <arg name="index" value="2" /> -->
+  <!--   <arg name="file" value="$(arg file)" /> -->
+  <!--   <arg name="dir" value="$(arg dir)" /> -->
+  <!-- </include> -->
 
-  <!-- robot 8 -->
-  <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" >
-    <arg name="ns" value="robot_8" />
-    <arg name="index" value="3" />
-    <arg name="file" value="$(arg file)" />
-    <arg name="dir" value="$(arg dir)" />
-  </include>
+  <!-- <!-\- robot 8 -\-> -->
+  <!-- <include file="$(find puppeteer_control)/launch/single_robot_sim.launch" > -->
+  <!--   <arg name="ns" value="robot_8" /> -->
+  <!--   <arg name="index" value="3" /> -->
+  <!--   <arg name="file" value="$(arg file)" /> -->
+  <!--   <arg name="dir" value="$(arg dir)" /> -->
+  <!-- </include> -->
 
   <!--launch the keyboard node-->
   <node pkg="keyboard_node" type="multi_keyboard_node"

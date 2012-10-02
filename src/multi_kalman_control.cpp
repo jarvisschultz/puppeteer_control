@@ -92,7 +92,7 @@ private:
     ros::Publisher serial_pub;
     ros::Subscriber sub;
     ros::Timer timer,pathtimer;
-    ros::Time service_time;
+    // ros::Time service_time;
     ros::Publisher ref_pub, rpath_pub;
     puppeteer_msgs::RobotCommands command;
     tf::TransformBroadcaster br;
@@ -108,6 +108,7 @@ private:
     // Key times
     ros::Time base_time;
     ros::Time current_time;
+    ros::Time tstamp;
 
 
 public:
@@ -182,15 +183,15 @@ public:
 		cal_start_flag = true;
 	    }
 	    else
-	    {
-		ros::Duration dt = ros::Time::now()-service_time;
-		ROS_DEBUG("time since last request = %6.5f",dt.toSec());
-		// if it has been awhile since sending the service,
-		// let's just re-send it to keep the robots from
-		// resetting.
-		if (dt.toSec() > 1/MIN_COMM_FREQUENCY)
-		    service_request();
-	    }
+	    // {
+	    // 	ros::Duration dt = ros::Time::now()-service_time;
+	    // 	ROS_DEBUG("time since last request = %6.5f",dt.toSec());
+	    // 	// if it has been awhile since sending the service,
+	    // 	// let's just re-send it to keep the robots from
+	    // 	// resetting.
+	    // 	if (dt.toSec() > 1/MIN_COMM_FREQUENCY)
+	    // 	    service_request();
+	    // }
 	    
 	    return;
 	} // END OF timercb()
@@ -204,6 +205,7 @@ public:
 	    ROS_DEBUG("Control pose subscriber triggered");
 	    static double running_time = 0.0;
 	    ros::param::getCached("/operating_condition", operating_condition);
+	    tstamp = pose.header.stamp;
 	    
 	    if (operating_condition == 0 || operating_condition == 3)
 	    {
@@ -219,7 +221,7 @@ public:
 
 		    // set parameters for sending initial pose
 		    command.robot_index = traj->RobotMY;
-		    command.header.stamp = ros::Time::now();
+		    command.header.stamp = tstamp;
 		    command.type = 'l';
 		    command.x = traj->vals[0][1];
 		    command.y = traj->vals[0][2];
@@ -240,7 +242,7 @@ public:
 
 		    // set parameters for sending initial pose
 		    command.robot_index = traj->RobotMY;
-		    command.header.stamp = ros::Time::now();
+		    command.header.stamp = tstamp;
 		    command.type = 'l';
 		    command.x = traj->vals[0][1];
 		    command.y = traj->vals[0][2];
@@ -260,7 +262,7 @@ public:
 		{
 		    // we will run the regular control loop
 		    // let's first get the expected pose at the given time:
-		    current_time = ros::Time::now();
+		    current_time = tstamp;
 		    running_time = (current_time-base_time).toSec();
 		    ROS_DEBUG("Running time is %f", running_time);
 		    ROS_DEBUG("Final time is %f", traj->vals[num-1][0]);
@@ -275,7 +277,7 @@ public:
 			// stop robot!
 			ROS_INFO("Trajectory Finished!");
 			command.robot_index = 9;
-			command.header.stamp = ros::Time::now();
+			command.header.stamp = tstamp;
 			command.type = 'h';
 			command.v_left = 0.0;
 			command.v_right = 0.0;
@@ -311,7 +313,7 @@ public:
     void service_request(void)
 	{
 	    // set local time for current service call:
-	    service_time = ros::Time::now();
+	    // service_time = ros::Time::now();
 	    serial_pub.publish(command);
 	    return;
 	} // END OF service_request()
