@@ -182,17 +182,20 @@ public:
 		start_flag = true;
 		cal_start_flag = true;
 	    }
-	    else
-	    // {
-	    // 	ros::Duration dt = ros::Time::now()-service_time;
-	    // 	ROS_DEBUG("time since last request = %6.5f",dt.toSec());
-	    // 	// if it has been awhile since sending the service,
-	    // 	// let's just re-send it to keep the robots from
-	    // 	// resetting.
-	    // 	if (dt.toSec() > 1/MIN_COMM_FREQUENCY)
-	    // 	    service_request();
-	    // }
-	    
+	    if (operating_condition == 3 || operating_condition == 4)
+	    {
+		// then let's keep sending the stop command just so we
+		// make sure the robots stop:
+		command.robot_index = traj->RobotMY;
+		command.header.stamp = tstamp;
+		command.type = 'h';
+		command.v_left = 0.0;
+		command.v_right = 0.0;
+		command.v_top = 0.0;
+		command.div = 3;
+		service_request();
+	    }		
+		
 	    return;
 	} // END OF timercb()
 
@@ -276,7 +279,7 @@ public:
 		    {
 			// stop robot!
 			ROS_INFO("Trajectory Finished!");
-			command.robot_index = 9;
+			command.robot_index = traj->RobotMY;
 			command.header.stamp = tstamp;
 			command.type = 'h';
 			command.v_left = 0.0;
