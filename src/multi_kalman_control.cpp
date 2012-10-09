@@ -82,8 +82,8 @@ private:
 	int RobotMY;
 	float DT;
 	unsigned int num;
-	float vals[][6]; // unknown length;
-			 // t,x,y,Vd,Wd,r
+	float vals[][7]; // unknown length;
+			 // t,x,y,Vd,Wd,rdotl,rdotr
     } Trajectory;       
 
     int operating_condition;
@@ -100,7 +100,7 @@ private:
     nav_msgs::Path path_m, path_r;
     bool start_flag, cal_start_flag, winch;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
-    float vd, wd, rdotd;
+    float vd, wd, rdotleft_d, rdotright_d;
     unsigned int num;
     // Controller gains
     float k1, k2, k3;
@@ -357,13 +357,16 @@ public:
 		mult*(traj->vals[index][3]-traj->vals[index-1][3]);
 	    wd = (traj->vals[index-1][4])+
 		mult*(traj->vals[index][4]-traj->vals[index-1][4]);
-	    rdotd = (traj->vals[index-1][5])+
+	    rdotleft_d = (traj->vals[index-1][5])+
 	    	mult*(traj->vals[index][5]-traj->vals[index-1][5]);
+	    rdotright_d = (traj->vals[index-1][6])+
+	    	mult*(traj->vals[index][6]-traj->vals[index-1][6]);
 
 	    ROS_DEBUG("Desired values at time t = %f", time);
 	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",
 		      desired_x, desired_y, desired_th);
-	    ROS_DEBUG("vd = %f\twd = %f\trdotd = %f\t",vd, wd, rdotd);
+	    ROS_DEBUG("vd = %f\twd = %f\trdotl = %f\trdotr = %f\t",
+		      vd, wd, rdotleft_d, rdotright_d);
 
 	    // now we can convert the desired pose into a
 	    // nav_msgs::Odometry and publish it
@@ -452,14 +455,20 @@ public:
 	    // Set service parameters:
 	    command.robot_index = traj->RobotMY;
 	    command.header.stamp = current_time;
-	    command.type = 'd';
 	    command.v_robot = v;
 	    command.w_robot = omega;
 
 	    if (winch)
-		command.rdot = rdotd;
+	    {
+		command.type = 'i';
+		command.rdot_left = rdotleft_d;
+		command.rdot_right = rdotright_d;
+	    }
 	    else
+	    {
+		command.type = 'd';
 		command.rdot = 0.0;  //  Disable winches
+	    }
 	    command.div = 4;
 
 	    return;
@@ -510,11 +519,16 @@ public:
 		    ss >> temp_float;
 		    traj->vals[i][j] = temp_float;
 		}
-		// fill out r
-		getline(file, line);
+		// fill out r dots
+		getline(file, line, ',');
 		std::stringstream ss(line);
 		ss >> temp_float;
 		traj->vals[i][5] = temp_float;
+
+		getline(file, line);
+		std::stringstream ss2(line);
+		ss2 >> temp_float;
+		traj->vals[i][6] = temp_float;
 	    }
 	    file.close();
 	    
