@@ -54,6 +54,7 @@
 #define MAX_TRANS_VEL  (2.25)
 #define MAX_ANG_VEL (30.0)
 #define MIN_COMM_FREQUENCY (10.0)
+#define MOVE_THRESHOLD (0.001) // m/sec
 std::string filename;
 char ch;
 
@@ -100,6 +101,7 @@ private:
     nav_msgs::Path path_m, path_r;
     bool start_flag, cal_start_flag, winch;
     float desired_x, desired_y, desired_th, actual_x, actual_y, actual_th;
+    float initial_th;
     float vd, wd, rdotleft_d, rdotright_d;
     unsigned int num;
     // Controller gains
@@ -228,10 +230,9 @@ public:
 		    command.type = 'l';
 		    command.x = traj->vals[0][1];
 		    command.y = traj->vals[0][2];
-		    command.th = atan2(
-			traj->vals[1][2]-traj->vals[0][2],
-			traj->vals[1][1]-traj->vals[0][1]);
+		    command.th = initial_th;
 		    command.div = 4;
+		    desired_th = initial_th;
 
 		    cal_start_flag = false;
 		}
@@ -249,10 +250,9 @@ public:
 		    command.type = 'l';
 		    command.x = traj->vals[0][1];
 		    command.y = traj->vals[0][2];
-		    command.th = atan2(
-			traj->vals[1][2]-traj->vals[0][2],
-			traj->vals[1][1]-traj->vals[0][1]);
+		    command.th = initial_th;
 		    command.div = 4;
+		    desired_th = initial_th;
 
 		    start_flag = false;
 		    base_time = command.header.stamp;
@@ -344,13 +344,6 @@ public:
 		mult*(traj->vals[index][1]-traj->vals[index-1][1]);
 	    desired_y = (traj->vals[index-1][2]) +
 		mult*(traj->vals[index][2]-traj->vals[index-1][2]);
-	    // now, let's estimate the desired orientation to do this
-	    // we just draw a straight line from the current point to
-	    // the next point
-	    desired_th = atan2(traj->vals[index][2]-desired_y,
-			       traj->vals[index][1]-desired_x);
-	    if (isnan(desired_th) == 0)
-		desired_th = angles::normalize_angle(desired_th);
 
 	    // Now, we can interpolate the feedforward terms:
 	    vd = (traj->vals[index-1][3])+
@@ -361,6 +354,16 @@ public:
 	    	mult*(traj->vals[index][5]-traj->vals[index-1][5]);
 	    rdotright_d = (traj->vals[index-1][6])+
 	    	mult*(traj->vals[index][6]-traj->vals[index-1][6]);
+
+	    // now, let's estimate the desired orientation to do this
+	    // we just draw a straight line from the current point to
+	    // the next point
+	    double th = atan2(traj->vals[index][2]-desired_y,
+			      traj->vals[index][1]-desired_x);
+	    // are we going fast enough to reliably determine theta?
+	    if (vd > MOVE_THRESHOLD)
+		desired_th = angles::normalize_angle(th);
+
 
 	    ROS_DEBUG("Desired values at time t = %f", time);
 	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",
@@ -537,7 +540,10 @@ public:
 	    traj->DT = traj->vals[1][0]-traj->vals[0][0];
 	    traj->num = num;
 
-	    // Now let's set the feedforward terms in the vals array:
+	    // Now let's set the feedforward terms in the vals array, and search
+	    // for a sufficiently high velocity to determine theta:
+	    double th = 0.0;
+	    bool need_th_flag = true;
 	    for (i=0; i<num-2; i++)
 	    {
 		xd = (traj->vals[i+1][1]-traj->vals[i][1])/
@@ -555,6 +561,13 @@ public:
 		traj->vals[i][3] = sqrt(pow(xd,2)+pow(yd,2));
 		traj->vals[i][4] = (ydd*xd-xdd*yd)/(pow(xd,2)+pow(yd,2));
 
+		// check vel for theta:
+		if (traj->vals[i][3] > MOVE_THRESHOLD && need_th_flag)
+		{
+		    th = atan2(traj->vals[i+1][2]-traj->vals[i][2],
+			       traj->vals[i+1][1]-traj->vals[i][1]);
+		    need_th_flag = false;
+		}
 	    }
 	    // Now, let's fill out the last few entries:
 	    traj->vals[num-2][3] = traj->vals[num-3][3];
@@ -567,14 +580,13 @@ public:
 	    ros::param::set("robot_z0", traj->vals[0][2]);
 	    ros::param::set("robot_y0", 1.0); // this value is arbitrary!
 	    ros::param::set("robot_r0", traj->vals[0][5]);
-
-	    double th = atan2(traj->vals[1][2]-traj->vals[0][2],
-			      traj->vals[1][1]-traj->vals[0][1]);
 	    
-	    if (isnan(th) == 0)
+	    if (!isnan(th))
 	    {
 		th = angles::normalize_angle(th);
 		ros::param::set("robot_th0", th);
+		initial_th = th;
+		desired_th = initial_th;
 	    }
 	    else
 		ROS_ERROR("Initial angle returned NaN!");

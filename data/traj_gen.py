@@ -47,8 +47,8 @@ def main(fname):
     ## yref = 0.0*tvec
     ## zref = 0.0*tvec
 
-    xref = 0.5*np.cos(tvec/2.+7.0*np.pi/4.)
-    yref = 0.5*np.sin(tvec/2.+7.0*np.pi/4.)
+    xref = 0.5*np.cos(tvec/2.+4.0*np.pi/4.)
+    yref = 0.5*np.sin(tvec/2.+4.0*np.pi/4.)
     zref = 0.0*tvec
 
     vd, wd = get_curvature(tvec,xref,yref)
@@ -60,8 +60,8 @@ def main(fname):
         ##     tvec[i], xref[i], yref[i], zref[i], zref[i], tref[i])
         ## str1 = '{0: f},{1: f},{2: f},{3: f},{4: f}\n'.format(
         ##     tvec[i], xref[i], yref[i], vd[i], wd[i])
-        str1 = '{0: f},{1: f},{2: f},{3: f}\n'.format(
-            tvec[i], xref[i], yref[i], 12.0)
+        str1 = '{0: f},{1: f},{2: f},{3: f},{4: f}\n'.format(
+            tvec[i], xref[i], yref[i], 12.0, 12.0)
         f.write(str1);
     f.close()
 
