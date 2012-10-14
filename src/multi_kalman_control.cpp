@@ -111,6 +111,7 @@ private:
     ros::Time base_time;
     ros::Time current_time;
     ros::Time tstamp;
+    float future_ori_time;
 
 
 public:
@@ -363,7 +364,23 @@ public:
 	    // are we going fast enough to reliably determine theta?
 	    if (vd > MOVE_THRESHOLD)
 		desired_th = angles::normalize_angle(th);
-
+	    else
+	    {
+		// if not, let's find the next time that we can reliably
+		// determine a theta and set that as the desired theta
+		unsigned int i = index;
+		for (i=index; i < (traj->num-1); i++)
+		{
+		    if (traj->vals[i][3] > MOVE_THRESHOLD)
+		    {
+			double th = atan2(traj->vals[i+1][2]-traj->vals[i][2],
+					  traj->vals[i+1][1]-traj->vals[i][1]);
+			desired_th = angles::normalize_angle(th);
+			future_ori_time = traj->vals[i][0];
+			break;
+		    }
+		}
+	    }
 
 	    ROS_DEBUG("Desired values at time t = %f", time);
 	    ROS_DEBUG("Xd = %f\tYd = %f\tTd = %f\t",
@@ -407,7 +424,7 @@ public:
     void get_control_values(const nav_msgs::Odometry &p)
 	{
 	    ROS_DEBUG("Calculating the control values");
-	    float v, omega;// , dtheta;
+	    float v, omega;
 
 	    // Fill out the robot's pose by transforming the published
 	    // odometry message into the robot's own reference frame
@@ -420,6 +437,16 @@ public:
 	    
 	    ROS_DEBUG("Xa = %f\tYa = %f\tTa = %f\t",
 		      actual_x, actual_y, actual_th);
+
+	    // Add handling for the case of the robot being stopped, but wanting
+	    // to control its angle
+	    if (vd < MOVE_THRESHOLD)
+	    {
+		float dtheta = angles::shortest_angular_distance(actual_th,
+								 desired_th);
+		float dt = future_ori_time-(current_time-base_time).toSec();
+		wd = dtheta/dt;		
+	    }
 
 	    // Now calculate the gain values:
 	    k1 = 2*zeta*sqrt(pow(wd,2)+b*pow(vd,2));
@@ -594,24 +621,6 @@ public:
 	    return traj;
 	} // END OF ReadControls()
 
-    
-    double clamp_angle(const double theta)
-	{
-	    double th = theta;
-	    while(th > M_PI)
-		th -= 2.0*M_PI;
-	    while(th <= -M_PI)
-		th += 2.0*M_PI;
-	    return th;
-	}
-    
-    double angle_correction(double desired, double actual)
-	{
-	    double tmp = actual;
-	    while ((desired-tmp) > M_PI) tmp += 2.0*M_PI;
-	    while ((desired-tmp) < -M_PI) tmp -= 2.0*M_PI;
-	    return(desired-tmp);
-	}
 
     void check_winch(void)
 	{
