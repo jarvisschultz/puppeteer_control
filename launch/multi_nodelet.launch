@@ -37,7 +37,7 @@
   <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
   <!-- 	launch-prefix=xterm -rv -e gdb args /> -->
   <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
-  	output="screen" required="true" />
+  	output="screen" respawn="true" />
 
   <!-- set all of the parameters for launching the serial node for
        each robot.  Note that this file actually gets read by the

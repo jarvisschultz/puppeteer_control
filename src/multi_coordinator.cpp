@@ -301,31 +301,35 @@ public:
 	{
 	    
 	    static int num_delays = 0;
-	    if(calibrated_flag)
-	    {
-		if (num_delays < NUM_FRAME_DELAYS)
-		{
-		    num_delays++;
-		    return;
-		}
-		else if (num_delays < NUM_EKF_INITS+NUM_FRAME_DELAYS)
-		    process_robots(1);
-		else
-		{
-		    process_robots(operating_condition);
-		}
-		num_delays++;
-		return;
-	    }
-	    
+
 	    // are we in idle or stop condition?
-	    else if(operating_condition == 0 || operating_condition == 3)
+	    if(operating_condition == 0 || operating_condition == 3)
 		ROS_DEBUG_THROTTLE(1,"Coordinator node is idle due to operating condition");
 
 	    // are we in emergency stop condition?
 	    else if(operating_condition == 4)
 		ROS_WARN_THROTTLE(1,"Emergency Stop Requested");
 
+	    else if(operating_condition == 1 || operating_condition == 2)
+	    {
+		if(calibrated_flag)
+		{
+		    if (num_delays < NUM_FRAME_DELAYS)
+		    {
+			num_delays++;
+			return;
+		    }
+		    else if (num_delays < NUM_EKF_INITS+NUM_FRAME_DELAYS)
+			process_robots(1);
+		    else
+		    {
+			process_robots(operating_condition);
+		    }
+		    num_delays++;
+		    return;
+		}
+	    }
+	    
 	    // otherwise something terrible has happened
 	    else
 		ROS_ERROR("Invalid value for operating_condition");
