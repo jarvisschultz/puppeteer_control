@@ -650,8 +650,11 @@ public:
 
     void pathpubcb(const ros::TimerEvent& e)
 	{
-	    // publish paths
-	    rpath_pub.publish(path_r);
+	    if (operating_condition == 1 || operating_condition == 2)
+	    {
+		// publish paths
+		rpath_pub.publish(path_r);
+	    }
 	    return;
 	}
 };

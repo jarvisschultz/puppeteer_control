@@ -232,7 +232,10 @@ public:
 	    // if we aren't calibrating or running, let's just exit
 	    // this cb
 	    if (operating_condition != 2 && operating_condition != 1)
-	    	return;
+	    {
+		calibration_and_publishing_logic();
+		return;
+	    }
 	    puppeteer_msgs::Robots b;
 	    b.robots.resize(bots.robots.size());
 	    b = bots;
@@ -271,32 +274,29 @@ public:
 	    	    prev_bots_sorted = current_bots_sorted;
 	    	    current_bots_sorted = calibrate_routine();
 	    	}
-	    	return;
+	    }
+	    else
+	    {
+		// send all relevant transforms
+		if (calibrated_flag)
+		    send_frames();
+
+		// If we got here, we are calibrated.  That means we can
+		// sort robots based on previous locations
+		puppeteer_msgs::Robots tmp;
+		tmp.robots.resize(current_bots_sorted.robots.size());
+		tmp = current_bots_sorted;
+		// print_bots("tmp_bots (before)",tmp);
+		current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
+		prev_bots_sorted = tmp;
 	    }
 	    
-	    // send all relevant transforms
-	    if (calibrated_flag)
-	    	send_frames();
-
-	    // If we got here, we are calibrated.  That means we can
-	    // sort robots based on previous locations
-	    puppeteer_msgs::Robots tmp;
-	    tmp.robots.resize(current_bots_sorted.robots.size());
-	    tmp = current_bots_sorted;
-	    // print_bots("tmp_bots (before)",tmp);
-	    current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
-	    prev_bots_sorted = tmp;
-
 	    // now we can publish all relevant data and handle calibration logic:
 	    calibration_and_publishing_logic();	    
-	    
 	    return;
 	}
 	
     
-
-    // void timercb(const ros::TimerEvent& e)
-    // void timercb(void)
     void calibration_and_publishing_logic(void)
 	{
 	    
@@ -304,11 +304,11 @@ public:
 
 	    // are we in idle or stop condition?
 	    if(operating_condition == 0 || operating_condition == 3)
-		ROS_DEBUG_THROTTLE(1,"Coordinator node is idle due to operating condition");
+	    	ROS_DEBUG_THROTTLE(1, "Coordinator node is idle due to operating condition");
 
 	    // are we in emergency stop condition?
 	    else if(operating_condition == 4)
-		ROS_WARN_THROTTLE(1,"Emergency Stop Requested");
+	    	ROS_WARN_THROTTLE(1,"Emergency Stop Requested");
 
 	    else if(operating_condition == 1 || operating_condition == 2)
 	    {
@@ -328,8 +328,9 @@ public:
 		    num_delays++;
 		    return;
 		}
+		else
+		    return;
 	    }
-	    
 	    // otherwise something terrible has happened
 	    else
 		ROS_ERROR("Invalid value for operating_condition");
@@ -347,12 +348,12 @@ public:
 	    static Eigen::MatrixXd cal_eig(nr,3);
 	    puppeteer_msgs::Robots sorted_bots;
 	    sorted_bots.robots.resize(nr);
-		
+
 	    // if this is the first call to the function, let's get
 	    // the starting pose for each of the robots.
 	    if(calibrate_count == 0)
 	    {
-		ROS_DEBUG_THROTTLE(1,"Calibrating...");
+		ROS_INFO("Coordintor calibrating...");
 		puppeteer_msgs::Robots r;
 		double tmp;
 		r.robots.resize(nr);
