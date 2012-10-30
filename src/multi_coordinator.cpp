@@ -559,7 +559,7 @@ public:
 		    return true;
 		}
 
-		pos.push_back(tmp);		    
+		pos.push_back(tmp);
 		ref_ord.push_back(j+1);
 	    }
 
@@ -945,7 +945,7 @@ int main(int argc, char **argv)
     Coordinator coord;
   
     ros::spin();
-  
+
     return 0;
 }
 

@@ -24,8 +24,6 @@
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
   <!-- launch kinect and tracker node/ nodelets -->
   <include file="$(find objecttracker_nu)/launch/nodelet_multi_robot.launch" />
-  <!-- <include file="$(find objecttracker_nu)/launch/multi_robot_tracking.launch"/> -->
-  <!-- <include file="$(find objecttracker_nu)/launch/optimization_frame_broadcaster.launch"/> -->
 
   <!-- launch rviz if "vis"=true: -->
   <group if="$(arg vis)">
@@ -34,10 +32,10 @@
   </group>
 
   <!-- launch the coordinator node -->
-  <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
-  <!-- 	launch-prefix=xterm -rv -e gdb args /> -->
   <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
-  	output="screen" respawn="true" />
+  	launch-prefix="xterm -rv -e gdb --args" />
+  <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
+  <!-- 	output="log" respawn="true" /> -->
 
   <!-- set all of the parameters for launching the serial node for
        each robot.  Note that this file actually gets read by the
@@ -117,15 +115,9 @@
   </group>
 
 
-
   <!--launch the keyboard node-->
   <node pkg="keyboard_node" type="multi_keyboard_node"
   	name="keyboard_interface" output="screen" respawn="true"
   	launch-prefix="xterm -rv -e" />
-
-
-  <!--now let's launch the serial node-->
-  <!-- <node pkg="serial_node" type="multi_serial_topic" name="serial_node" -->
-  <!-- 	output="log" respawn="true" launch-prefix="xterm -rv -e"/>  -->
 
 </launch>
