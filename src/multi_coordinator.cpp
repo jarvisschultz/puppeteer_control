@@ -81,7 +81,7 @@ private:
     nav_msgs::Odometry kin_pose[MAX_ROBOTS];
     puppeteer_msgs::Robots current_bots, prev_bots, start_bots, cal_bots;
     puppeteer_msgs::Robots current_bots_sorted, prev_bots_sorted;
-    puppeteer_msgs::Robots desired_bots;
+    puppeteer_msgs::Robots desired_bots, tmp_bots;
     Eigen::Vector3d cal_pos;
     int **tab;
     int height;
@@ -92,9 +92,7 @@ private:
 public:
     Coordinator() {
 	ROS_DEBUG("Creating publishers and subscribers");
-	// timer = n_.
-	//     createTimer(ros::Duration(0.01), &Coordinator::timercb, this);
-	robots_sub = n_.subscribe("robot_positions", 1,
+	robots_sub = n_.subscribe("robot_positions", 100,
 				  &Coordinator::datacb, this);
 	// get the number of robots
 	if (ros::param::has("/number_robots"))
@@ -176,7 +174,6 @@ public:
 	    return;
 	}
 
-
 	return;
     }
 
@@ -187,8 +184,10 @@ public:
 	    bptr = &b;
 	    
 	    std::cout << "Name = " << name << std::endl;
-	    std::cout << "Pointer = ";
+	    std::cout << "Pointer Location = ";
 	    printf("%p\r\n", bptr);
+	    std::cout << "Pointer Value = ";
+	    printf("%p\r\n", &bptr);
 
 	    std::cout << "Total number of robots = "
 		      << b.robots.size() << std::endl;
@@ -205,7 +204,7 @@ public:
 
     
     
-    void datacb(const puppeteer_msgs::Robots &bots)
+    void datacb(puppeteer_msgs::Robots bots)
 	{
 	    static bool first_flag = true;
 	    static ros::Time time = ros::Time::now();
@@ -236,19 +235,31 @@ public:
 		calibration_and_publishing_logic();
 		return;
 	    }
-	    puppeteer_msgs::Robots b;
-	    b.robots.resize(bots.robots.size());
-	    b = bots;
+	    // puppeteer_msgs::Robots b = *(new puppeteer_msgs::Robots);
+	    // b.robots = bots.robots;
+	    // b.robots.resize(bots.robots.size());
+	    // b = bots;
 	    tstamp = bots.header.stamp;
-	    
+
+	    // print_bots("Raw data from cb:", bots);
+	    // print_bots("b copy pre-correction", b);
+
+	    if (bots.number > (unsigned int) nr)
+	    {
+		ROS_WARN("Received too many robots (actual %u, desired %d)",
+			 bots.number, nr);
+		return;
+	    }
 	    // correct the points in bots
-	    b = adjust_for_robot_size(b);
+	    adjust_for_robot_size(bots);
+	    // print_bots("b copy post-correction", b);
+	    // print_bots("Raw data post-correction", bots);
 
 	    // store the values that we received:
 	    if (first_flag) {
 		ROS_DEBUG("First call!");
-	    	current_bots = b;
-	    	prev_bots = b;
+	    	current_bots = bots;
+	    	prev_bots = bots;
 	    	first_flag = false;
 		time = ros::Time::now();
 	    	return;
@@ -263,8 +274,10 @@ public:
 		
 
 	    // store arrangements:
+	    prev_bots.robots.resize(current_bots.robots.size());
 	    prev_bots = current_bots;
-	    current_bots = b;
+	    current_bots.robots.resize(bots.robots.size());
+	    current_bots = bots;
 	    
 	    // do we need to calibrate?
 	    if ( !calibrated_flag )
@@ -283,12 +296,12 @@ public:
 
 		// If we got here, we are calibrated.  That means we can
 		// sort robots based on previous locations
-		puppeteer_msgs::Robots tmp;
-		tmp.robots.resize(current_bots_sorted.robots.size());
-		tmp = current_bots_sorted;
-		// print_bots("tmp_bots (before)",tmp);
+		tmp_bots.robots.resize(current_bots_sorted.robots.size());
+		tmp_bots = current_bots_sorted;
+		// print_bots("tmp_bots (before)",tmp_bots);
 		current_bots_sorted = associate_robots(current_bots, prev_bots_sorted);
-		prev_bots_sorted = tmp;
+		prev_bots_sorted.robots.resize(tmp_bots.robots.size());
+		prev_bots_sorted = tmp_bots;
 	    }
 	    
 	    // now we can publish all relevant data and handle calibration logic:
@@ -818,18 +831,19 @@ public:
 	}
 
     // this function accounts for the size of the robot:
-    puppeteer_msgs::Robots adjust_for_robot_size(puppeteer_msgs::Robots &p)
+    void adjust_for_robot_size(puppeteer_msgs::Robots &point)	
 	{
 	    ROS_DEBUG("correct_vals called");
-	    puppeteer_msgs::Robots point;
 	    Eigen::Vector3d ur;
-	    point = p;
 
-	    for (unsigned int j=0; j<p.number; j++)
+	    for (unsigned int j=0; j<point.number; j++)
 	    {
 		// let's create a unit vector from the kinect frame to the
 		// robot's location
-		ur << p.robots[j].point.x, p.robots[j].point.y, p.robots[j].point.z;
+		ur <<
+		    point.robots[j].point.x,
+		    point.robots[j].point.y,
+		    point.robots[j].point.z;
 		// now turn it into a unit vector:
 		ur = ur/ur.norm();
 		// now we can correct the values of point
@@ -840,8 +854,33 @@ public:
 		point.robots[j].point.z = point.robots[j].point.z+ur(2);
 	    }
 	    
-	    return(point);	    	    
+	    return;	    	    
 	}
+
+    // puppeteer_msgs::Robots adjust_for_robot_size(const puppeteer_msgs::Robots &p)
+	// {
+	//     ROS_DEBUG("correct_vals called");
+	//     puppeteer_msgs::Robots point;
+	//     Eigen::Vector3d ur;
+	//     point = p;
+
+	//     for (unsigned int j=0; j<p.number; j++)
+	//     {
+	// 	// let's create a unit vector from the kinect frame to the
+	// 	// robot's location
+	// 	ur << p.robots[j].point.x, p.robots[j].point.y, p.robots[j].point.z;
+	// 	// now turn it into a unit vector:
+	// 	ur = ur/ur.norm();
+	// 	// now we can correct the values of point
+	// 	ur = ur*robot_radius[j];
+	    
+	// 	point.robots[j].point.x = point.robots[j].point.x+ur(0);
+	// 	point.robots[j].point.y = point.robots[j].point.y+ur(1);
+	// 	point.robots[j].point.z = point.robots[j].point.z+ur(2);
+	//     }
+	    
+	//     return(point);	    	    
+	// }
     
 }; // end Coordinator Class
 

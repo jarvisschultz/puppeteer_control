@@ -33,7 +33,7 @@
 
   <!-- launch the coordinator node -->
   <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node"
-  	launch-prefix="xterm -rv -e gdb --args" />
+  	launch-prefix="xterm -e gdb -x /home/jarvis/Desktop/debug_data/coordinator_crash/.gdbinit --args" />
   <!-- <node pkg="puppeteer_control" type="multi_coordinator" name="coordinator_node" -->
   <!-- 	output="log" respawn="true" /> -->
 
