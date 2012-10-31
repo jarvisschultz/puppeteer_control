@@ -1,7 +1,7 @@
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=-1.4548 1.564 3.62108 -0.169756 0.280585 1.16652
+Camera\ Config=-1.4598 1.564 3.62108 -0.169756 0.280585 1.16652
 Camera\ Type=rviz::OrbitViewController
 Default\ Frames.All\ Enabled=0
 Default\ Frames.Enabled=1
@@ -40,7 +40,7 @@ Full\ Cloud.Position\ Transformer=XYZ
 Full\ Cloud.Queue\ Size=10
 Full\ Cloud.Selectable=1
 Full\ Cloud.Style=0
-Full\ Cloud.Topic=/cloud_downsampler/voxel/output
+Full\ Cloud.Topic=/camera/depth/points
 Grid.Alpha=0.5
 Grid.Cell\ Size=1
 Grid.ColorB=0.5
@@ -56,9 +56,9 @@ Grid.OffsetZ=0
 Grid.Plane=0
 Grid.Plane\ Cell\ Count=10
 Grid.Reference\ Frame=<Fixed Frame>
-Property\ Grid\ Splitter=759,84
-Property\ Grid\ State=expanded=.Global Options,Full Cloud.Enabled;splitterratio=0.779026
-QMainWindow=000000ff00000000fd0000000300000000000001470000039dfc0200000001fb000000100044006900730070006c00610079007301000000360000039d000000ee00ffffff000000010000012f000002c1fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730000000034000000b60000006700fffffffb0000000a005600690065007700730000000034000001c2000000bb00fffffffb0000001200530065006c0065006300740069006f006e0000000034000002c10000006700ffffff00000003000005780000003efc0100000001fb0000000800540069006d0065010000000000000578000002bf00ffffff0000042b0000039d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ Splitter=788,84
+Property\ Grid\ State=expanded=.Global Options;splitterratio=0.779026
+QMainWindow=000000ff00000000fd000000030000000000000147000003bafc0200000001fb000000100044006900730070006c0061007900730100000036000003ba000000ee00ffffff000000010000012f000002c1fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730000000034000000b60000006700fffffffb0000000a005600690065007700730000000034000001c2000000bb00fffffffb0000001200530065006c0065006300740069006f006e0000000034000002c10000006700ffffff000000030000057a0000003efc0100000001fb0000000800540069006d006501000000000000057a000002bf00ffffff0000042d000003ba00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 Target\ Frame=<Fixed Frame>
 Tool\ 2D\ Nav\ GoalTopic=goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
@@ -202,19 +202,7 @@ camera_depth_optical_frame.Enabled=1
 camera_link.Enabled=1
 camera_rgb_frame.Enabled=1
 camera_rgb_optical_frame.Enabled=1
-map.Enabled=1
-optimization_frame.Enabled=1
 oriented_optimization_frame.Enabled=1
-robot_1_base_footprint_mine.Enabled=1
-robot_2_base_footprint_mine.Enabled=1
-robot_3_base_footprint_mine.Enabled=1
-robot_odom_pov.Enabled=1
-[Default Frames.Frames./robot_0]
-base_footprint_kinect.Enabled=1
-[Default Frames.Frames./robot_1]
-base_footprint_kinect.Enabled=1
-[Default Frames.Frames./robot_2]
-base_footprint_kinect.Enabled=1
 [Display0]
 ClassName=rviz::PointCloud2Display
 Name=Full Cloud
@@ -246,7 +234,7 @@ Name=cluster_3_cloud
 ClassName=rviz::PointCloud2Display
 Name=cluster_4_cloud
 [Window]
-Height=1076
-Width=1402
-X=1597
-Y=-80
+Height=1105
+Width=1404
+X=1596
+Y=-108
