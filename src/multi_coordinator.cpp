@@ -235,14 +235,7 @@ public:
 		calibration_and_publishing_logic();
 		return;
 	    }
-	    // puppeteer_msgs::Robots b = *(new puppeteer_msgs::Robots);
-	    // b.robots = bots.robots;
-	    // b.robots.resize(bots.robots.size());
-	    // b = bots;
 	    tstamp = bots.header.stamp;
-
-	    // print_bots("Raw data from cb:", bots);
-	    // print_bots("b copy pre-correction", b);
 
 	    if (bots.number > (unsigned int) nr)
 	    {
@@ -252,8 +245,6 @@ public:
 	    }
 	    // correct the points in bots
 	    adjust_for_robot_size(bots);
-	    // print_bots("b copy post-correction", b);
-	    // print_bots("Raw data post-correction", bots);
 
 	    // store the values that we received:
 	    if (first_flag) {
@@ -271,7 +262,6 @@ public:
 	    if (dt.toSec() > 1.0/MIN_FREQ)
 		ROS_WARN("Coordinator frequency dropping - %f Hz",
 			 1/dt.toSec());
-		
 
 	    // store arrangements:
 	    prev_bots.robots.resize(current_bots.robots.size());
@@ -317,7 +307,8 @@ public:
 
 	    // are we in idle or stop condition?
 	    if(operating_condition == 0 || operating_condition == 3)
-	    	ROS_DEBUG_THROTTLE(1, "Coordinator node is idle due to operating condition");
+	    	ROS_DEBUG_THROTTLE(1, "Coordinator node is idle due to "\
+				   "operating condition");
 
 	    // are we in emergency stop condition?
 	    else if(operating_condition == 4)
@@ -820,16 +811,6 @@ public:
 	    return;
 	}
 
-    double clamp_angle(double theta)
-	{
-	    double th = theta;
-	    while(th > M_PI)
-		th -= 2.0*M_PI;
-	    while(th <= M_PI)
-		th += 2.0*M_PI;
-	    return th;
-	}
-
     // this function accounts for the size of the robot:
     void adjust_for_robot_size(puppeteer_msgs::Robots &point)	
 	{
@@ -856,31 +837,6 @@ public:
 	    
 	    return;	    	    
 	}
-
-    // puppeteer_msgs::Robots adjust_for_robot_size(const puppeteer_msgs::Robots &p)
-	// {
-	//     ROS_DEBUG("correct_vals called");
-	//     puppeteer_msgs::Robots point;
-	//     Eigen::Vector3d ur;
-	//     point = p;
-
-	//     for (unsigned int j=0; j<p.number; j++)
-	//     {
-	// 	// let's create a unit vector from the kinect frame to the
-	// 	// robot's location
-	// 	ur << p.robots[j].point.x, p.robots[j].point.y, p.robots[j].point.z;
-	// 	// now turn it into a unit vector:
-	// 	ur = ur/ur.norm();
-	// 	// now we can correct the values of point
-	// 	ur = ur*robot_radius[j];
-	    
-	// 	point.robots[j].point.x = point.robots[j].point.x+ur(0);
-	// 	point.robots[j].point.y = point.robots[j].point.y+ur(1);
-	// 	point.robots[j].point.z = point.robots[j].point.z+ur(2);
-	//     }
-	    
-	//     return(point);	    	    
-	// }
     
 }; // end Coordinator Class
 
