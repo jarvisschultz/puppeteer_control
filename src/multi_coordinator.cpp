@@ -817,7 +817,7 @@ public:
 	    ROS_DEBUG("correct_vals called");
 	    Eigen::Vector3d ur;
 
-	    for (unsigned int j=0; j<point.number; j++)
+	    for (unsigned int j=0; j<point.robots.size(); j++)
 	    {
 		// let's create a unit vector from the kinect frame to the
 		// robot's location
