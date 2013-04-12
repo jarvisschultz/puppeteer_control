@@ -2,11 +2,37 @@
   <!-- set operating condition -->
   <param name="/operating_condition" type="int" value="0" />
 
-  <!--launch the serial node-->
+  <!--launch the serial node for each robot-->
   <rosparam file="$(find serial_node)/data/serial_device_dict.xml" command="load"/>
-  <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-	output="screen" respawn="true" 
-	launch-prefix="xterm -rv -e" />
+  <group ns="robot_1" >
+    <!-- start serial node -->
+    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
+    	  output="log" respawn="true" />
+  </group>
+
+  <group ns="robot_1" >
+    <arg name="index" value="robot_1" />
+    <param name="robot_index" type="int" value="1" />
+    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
+    	  output="log" respawn="true" />
+  </group>
+
+
+  <group ns="robot_2" >
+    <arg name="index" value="robot_2" />
+    <param name="robot_index" type="int" value="4" />
+    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
+    	  output="log" respawn="true" />
+  </group>
+
+
+  <group ns="robot_3" >
+    <arg name="index" value="robot_3" />
+    <param name="robot_index" type="int" value="5" />
+    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
+    	  output="log" respawn="true" />
+  </group>
+
 
   <!-- launch the wiimote control node -->
   <node pkg="puppeteer_control" type="new_wiimote"
