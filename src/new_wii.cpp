@@ -71,12 +71,12 @@ public:
     WiiControl() {
 	ROS_DEBUG("Instantiating WiiControl Class");
 	// get operating condition:
-	if(ros::param::has("operating_condition"))
-	    ros::param::set("operating_condition", 0);
+	if(ros::param::has("/operating_condition"))
+	    ros::param::set("/operating_condition", 0);
 	else
 	{
 	    ROS_WARN("Cannot Find Parameter: operating_condition");
-	    ros::param::set("operating_condition", 0);
+	    ros::param::set("/operating_condition", 0);
 	}
 	// get robot index
 	if(ros::param::has("robot_index"))
@@ -223,7 +223,7 @@ public:
 	    else if (s.buttons[2] || s.buttons[3] || s.buttons[10])
 	    {
 		ROS_DEBUG("IDLING");
-		ros::param::set("operating_condition", 0);
+		ros::param::set("/operating_condition", 0);
 		wii_control = false;
 		cmd.robot_index = robot_index;
 		cmd.type = (uint8_t) 'h';
@@ -238,7 +238,7 @@ public:
 	    else if (s.buttons[0] && s.buttons[1])
 	    {
 		ROS_DEBUG("RESUMING");
-		ros::param::set("operating_condition", 2);
+		ros::param::set("/operating_condition", 2);
 		wii_control = true;
 	    }
 	    else if (s.nunchuk_buttons[0] && s.nunchuk_buttons[1])
@@ -250,7 +250,7 @@ public:
 	    else if (s.buttons[6])
 	    {
 		ROS_DEBUG("resetting robot's pose");
-		ros::param::set("operating_condition", 0);
+		ros::param::set("/operating_condition", 0);
 		wii_control = false;
 		cmd.robot_index = robot_index;
 		cmd.type = (uint8_t) 'r';

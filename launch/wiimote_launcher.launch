@@ -1,51 +1,54 @@
 <launch>
   <!-- set operating condition -->
   <param name="/operating_condition" type="int" value="0" />
+  <param name="/number_robots" type="int" value="3" />
+  <param name="/robot_index" type="int" value="0" />
 
   <!--launch the serial node for each robot-->
   <rosparam file="$(find serial_node)/data/serial_device_dict.xml" command="load"/>
-  <group ns="robot_1" >
-    <!-- start serial node -->
-    <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-    	  output="log" respawn="true" />
-  </group>
 
   <group ns="robot_1" >
     <arg name="index" value="robot_1" />
-    <param name="robot_index" type="int" value="1" />
+    <param name="robot_index" type="int" value="4" />
+    <node pkg="topic_tools" type="relay" name="relay"
+  	  output="screen" respawn="true" args="/serial_commands serial_commands" />
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-    	  output="log" respawn="true" />
+    	  output="log" respawn="true"/>
   </group>
 
 
   <group ns="robot_2" >
     <arg name="index" value="robot_2" />
-    <param name="robot_index" type="int" value="4" />
+    <param name="robot_index" type="int" value="1" />
+    <node pkg="topic_tools" type="relay" name="relay"
+  	  output="screen" respawn="true" args="/serial_commands serial_commands" />
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-    	  output="log" respawn="true" />
+    	  output="log" respawn="true"/>
   </group>
 
 
-  <group ns="robot_3" >
+  <group ns="robot_3" > 
     <arg name="index" value="robot_3" />
     <param name="robot_index" type="int" value="5" />
+    <node pkg="topic_tools" type="relay" name="relay"
+	  output="screen" respawn="true" args="/serial_commands serial_commands" />
     <node pkg="serial_node" type="multi_serial_topic" name="serial_node"
-    	  output="log" respawn="true" />
+    	  output="log" respawn="true"/>
   </group>
-
 
   <!-- launch the wiimote control node -->
   <node pkg="puppeteer_control" type="new_wiimote"
 	name="wii_controller" output="screen" respawn="true"
-	launch-prefix="xterm -rv -e" />
+	launch-prefix="xterm -e" />
 
   <!--launch the keyboard node-->
-  <node pkg="keyboard_node" type="keyboard_node"
+  <node pkg="keyboard_node" type="multi_keyboard_node"
 	name="keyboard_interface" output="screen" respawn="true"
-	launch-prefix="xterm -rv -e" />
+	launch-prefix="xterm -e" />
 
   <!-- launch the general wii node -->
   <node pkg="wiimote" type="wiimote_node.py"
-	name="wiimote_connection" output="screen" respawn="true" />
+  	name="wiimote_connection" output="screen" respawn="true" />
+
 </launch>
 
