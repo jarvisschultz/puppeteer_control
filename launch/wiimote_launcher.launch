@@ -5,7 +5,8 @@
   <param name="/robot_index" type="int" value="0" />
 
   <!--launch the serial node for each robot-->
-  <rosparam file="$(find serial_node)/data/serial_device_dict.xml" command="load"/>
+  <rosparam file="$(find serial_node)/data/wiimote_launcher_serial_device_dict.xml" 
+	    command="load"/>
 
   <group ns="robot_1" >
     <arg name="index" value="robot_1" />

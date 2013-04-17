@@ -41,7 +41,8 @@
        each robot.  Note that this file actually gets read by the
        sorter_serial.py node to determine which index goes with which
        namespace.  If we change robot indices, we must re-run the sorting node. -->
-  <rosparam file="$(find serial_node)/data/serial_device_dict.xml" command="load"/>
+  <rosparam file="$(find serial_node)/data/multi_nodelet_serial_device_dict.xml" 
+	    command="load"/>
 
 
   <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
